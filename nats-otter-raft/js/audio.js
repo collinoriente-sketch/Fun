@@ -335,7 +335,8 @@
     // ------------------------------------------------------------ dance groove (moonwalk power-up)
     // An original funky loop: kick, snare, hats, a plucky bass line and chord stabs at 112 bpm.
 
-    startGroove() {
+    startGroove(bpm) {
+      this.gBpm = bpm || 112;
       if (!this.ctx || this.muted || !this.musicOn || this.grooveTimer) return;
       const c = this.ctx;
       if (this.musicTimer) {
@@ -364,7 +365,7 @@
     }
 
     scheduleGroove() {
-      const c = this.ctx, six = 60 / 112 / 4;
+      const c = this.ctx, six = 60 / (this.gBpm || 112) / 4;
       while (this.gNext < c.currentTime + (document.hidden ? 2 : 0.4)) {
         this.grooveStep(this.gStep % 32, this.gNext);
         this.gNext += six;
@@ -458,6 +459,105 @@
         o.connect(f);
         o.start(t);
         o.stop(t + 0.22);
+      }
+    }
+
+    // ------------------------------------------------------------ adventure sound effects
+    tap() {
+      if (!this.ok('tap', 0.04)) return;
+      this.tone('triangle', U.rand(700, 820), 420, 0.05, 0.035);
+    }
+    hit(k) {
+      if (!this.ok('hit', 0.05)) return;
+      this.noiseBurst(0.08, 1800, 600, 0.09 * (k || 1), 1);
+      this.tone('sine', 220 * (k || 1), 90, 0.1, 0.07);
+    }
+    boom(k) {
+      if (!this.ok('boom', 0.08)) return;
+      k = k || 1;
+      this.noiseBurst(0.5 * k, 900, 120, 0.22 * Math.min(1.4, k), 0.5);
+      this.tone('sine', 120, 38, 0.45 * k, 0.18);
+    }
+    whoosh() {
+      if (!this.ok('whoosh', 0.1)) return;
+      this.noiseBurst(0.25, 400, 2400, 0.08, 1.2);
+    }
+    charge(k) {
+      if (!this.ok('charge', 0.3)) return;
+      const d = 0.6 * (k || 1);
+      this.tone('sawtooth', 110, 880, d, 0.03);
+      this.tone('sine', 220, 1320, d, 0.04);
+    }
+    zap() {
+      if (!this.ok('zap', 0.08)) return;
+      this.tone('sawtooth', 1800, 120, 0.18, 0.05);
+      this.noiseBurst(0.12, 5000, 2000, 0.06, 2);
+    }
+    clang() {
+      if (!this.ok('clang', 0.1)) return;
+      this.tone('square', 620, 600, 0.18, 0.03);
+      this.tone('square', 931, 900, 0.14, 0.02);
+      this.noiseBurst(0.06, 4000, 3000, 0.06, 3);
+    }
+    sneak() {
+      if (!this.ok('sneak', 0.3)) return;
+      [659, 587, 523, 494].forEach((f, i) => this.tone('triangle', f, f * 0.98, 0.12, 0.04, i * 0.12));
+    }
+    ouch(p) {
+      if (!this.ok('ouch', 0.12)) return;
+      const f = 900 * (p || 1);
+      this.tone('sine', f, f * 0.6, 0.15, 0.04);
+    }
+    ko() {
+      if (!this.ok('ko', 0.5)) return;
+      [784, 659, 523, 392].forEach((f, i) => this.tone('triangle', f, f * 0.9, 0.25, 0.05, i * 0.14));
+    }
+    alarm() {
+      if (!this.ok('alarm', 1)) return;
+      for (let i = 0; i < 3; i++) {
+        this.tone('square', 880, 660, 0.28, 0.035, i * 0.34);
+      }
+    }
+    fanfare() {
+      if (!this.ok('fanfare', 1)) return;
+      [523, 659, 784, 1047, 784, 1047].forEach((f, i) => this.tone(i < 4 ? 'triangle' : 'sine', f, f, i === 5 ? 0.8 : 0.18, 0.05, [0, 0.12, 0.24, 0.36, 0.56, 0.68][i]));
+    }
+    // A short, recognisable cue for each boss.
+    bossSting(id) {
+      if (!this.ok('sting', 0.6)) return;
+      const T = (type, notes, step, dur, vol) => notes.forEach((f, i) => f && this.tone(type, f, f * 0.995, dur, vol, i * step));
+      switch (id) {
+        case 'dawson': // sneaky pizzicato creeping down
+          T('triangle', [392, 0, 370, 0, 349, 330, 0, 262], 0.11, 0.09, 0.05);
+          break;
+        case 'billy': // brooding minor chord, drawn out
+          [220, 262, 330, 415].forEach((f) => this.tone('sine', f, f * 0.98, 1.6, 0.025));
+          this.tone('triangle', 110, 104, 1.6, 0.04);
+          break;
+        case 'matt': // 8-bit rage blips
+          T('square', [523, 659, 523, 392, 330, 262], 0.08, 0.07, 0.03);
+          this.tone('sawtooth', 90, 60, 0.5, 0.04, 0.5);
+          break;
+        case 'mike': // construction clanks
+          [0, 0.22, 0.44].forEach((d) => {
+            this.tone('square', 180, 150, 0.1, 0.05, d);
+            this.tone('square', 1200, 1150, 0.06, 0.02, d);
+          });
+          break;
+        case 'tommy': // bubbling science + zap
+          for (let i = 0; i < 6; i++) this.tone('sine', U.rand(300, 900), U.rand(900, 1500), 0.07, 0.035, i * 0.07);
+          this.tone('sawtooth', 2000, 200, 0.3, 0.035, 0.45);
+          break;
+        case 'collint': // gym thuds
+          [0, 0.3, 0.6].forEach((d) => this.tone('sine', 140, 45, 0.25, 0.12, d));
+          this.tone('square', 90, 80, 0.2, 0.03, 0.9);
+          break;
+        case 'tsimberg': // magical steel-drum arpeggio
+          T('sine', [523, 659, 784, 988, 1175, 1568], 0.08, 0.5, 0.04);
+          T('triangle', [1047, 0, 1319, 0, 1568], 0.08, 0.3, 0.02);
+          break;
+        default:
+          this.chime();
       }
     }
 

@@ -42,6 +42,7 @@
     <button id="btnCheer" type="button" aria-label="Family Cheer" title="Family Cheer" hidden><span aria-hidden="true">🙌</span><span class="lbl">Family Cheer</span></button>
     <button id="btnFree" class="free" type="button" aria-label="Free Roam" title="Let everyone swim free" hidden><span aria-hidden="true">🌊</span><span class="lbl">Free Roam</span></button>
     <button id="btnJournal" class="icon" type="button" aria-label="Open the Raft Journal" title="Raft Journal">📔<i id="journalDot" hidden></i></button>
+    <button id="btnAdventure" class="adv-go" type="button" aria-label="Adventure mode" title="Adventure: explore and fight bosses"><span aria-hidden="true">⚔️</span><span class="lbl">Adventure</span></button>
   </nav>
 
   <div id="journal" class="scrim" hidden>
@@ -55,6 +56,44 @@
   </div>
 </div>
 
+  <!-- ============ ADVENTURE MODE HUD ============ -->
+  <div id="adv" class="adv" hidden>
+    <div class="adv-hud">
+      <div class="adv-row">
+        <button id="advHome" class="adv-pill" type="button" title="Back to the cozy raft"><span aria-hidden="true">🏝️</span><span class="lbl">Raft</span></button>
+        <div class="adv-res" id="advRes"></div>
+        <button id="advMusic" class="adv-pill icon" type="button" aria-label="Music on or off" title="Music">🎵</button>
+        <button id="advMute" class="adv-pill icon" type="button" aria-label="Sound on or off" title="Sound">🔈</button>
+      </div>
+      <div class="adv-row sub">
+        <span id="advBiome" class="biome"></span>
+        <div class="bossmeter"><i id="advMeterFill"></i><span id="advMeterLbl"></span></div>
+      </div>
+      <div id="advBossBar" class="bossbar" hidden>
+        <div class="bb-top"><b id="bbName"></b><span id="bbTitle"></span><span id="bbMods"></span></div>
+        <div class="bb-hp"><i id="bbGhost"></i><i id="bbFill"></i><span id="bbText"></span></div>
+      </div>
+    </div>
+    <div class="adv-bottom">
+      <div class="abil-row" id="advAbilities"></div>
+      <div class="adv-main">
+        <button id="advUpgrade" class="adv-pill up" type="button"><span aria-hidden="true">⬆️</span><span class="lbl">Upgrades</span><i id="advUpDot" class="dot" hidden></i></button>
+        <button id="advTap" class="tap-btn" type="button" hidden>TAP<br>ATTACK</button>
+        <button id="advUlt" class="ult-btn" type="button" aria-label="Grand Raft Supernova" hidden><i id="advUltFill"></i><span class="ui">🌟</span><b id="advUltLbl">0%</b></button>
+      </div>
+    </div>
+    <div id="advSheet" class="scrim" hidden>
+      <div class="sheet adv-sheet" role="dialog" aria-modal="true" aria-labelledby="advSheetTitle">
+        <div class="sheet-head">
+          <h2 id="advSheetTitle">⬆️ Otter Upgrades</h2>
+          <button id="advSheetClose" class="icon" type="button" aria-label="Close upgrades">✕</button>
+        </div>
+        <div id="advSheetBody"></div>
+      </div>
+    </div>
+    <div id="advCard" class="reward-card" hidden></div>
+  </div>
+
 <script src="js/util.js"></script>
 <script src="js/art.js"></script>
 <script src="js/family.js"></script>
@@ -64,6 +103,19 @@
 <script src="js/otter.js"></script>
 <script src="js/events.js"></script>
 <script src="js/dance.js"></script>
+<script src="js/adventure/config.js"></script>
+<script src="js/adventure/assets.js"></script>
+<script src="js/adventure/pool.js"></script>
+<script src="js/adventure/upgrades.js"></script>
+<script src="js/adventure/gear.js"></script>
+<script src="js/adventure/scroller.js"></script>
+<script src="js/adventure/entities.js"></script>
+<script src="js/adventure/squad.js"></script>
+<script src="js/adventure/boss.js"></script>
+<script src="js/adventure/bosses.js"></script>
+<script src="js/adventure/abilities.js"></script>
+<script src="js/adventure/advui.js"></script>
+<script src="js/adventure/adventure.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/game.js"></script>
 <script>

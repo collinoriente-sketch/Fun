@@ -13,6 +13,31 @@ chase fish and hold paws. Now and then they drift together into a raft.
 | **Gussy** | Baby | White and extra fluffy, sleepy, likes floating close to Mom |
 | **Finny** | Baby | Black, curious and a bit chaotic, follows Dad, chases anything shiny |
 
+## ⚔️ Adventure mode (side-scrolling boss rush)
+
+Tap **⚔️ Adventure** in the raft (or **🏝️ Raft** to go back). The game remembers which mode you were in.
+
+- **Explore:** the family swims through Open Ocean, Sunny Beach, Kelp Forest, Coral Reef, Sea Cave and a Shipwreck.
+  They grab 🐚 shells, 🌿 kelp, ⚙️ metal scraps, 💎 pearls, 🐟 fish and 💰 treasure chests on their own and bonk
+  crabs, jellyfish, pufferfish and gulls with thrown shells. Tap pickups to grab them, tap enemies to throw at them.
+- **Upgrades (⬆️):** spend resources on 12 upgrades. They visibly change the otters, from cute to shell clips,
+  armor, metal helmets, giant shell shields, auras, energy tails and halos. The **Scrap Refinery** turns metal scraps
+  into 🔩 refined metal over time. **Auto-buy** (on by default) spends for you while you're away.
+- **Bosses:** the boss meter fills as you travel, then **BOSS INCOMING!** Only one boss at a time, in order:
+  **Dawson** (tactical snake: burrows, tap when he pops up), **Billy** (emo dolphin: clones, find the sparkly tear),
+  **Matt** (ranked turtle: hides in his shell, hit him when it opens), **Mike** (construction dwarf: smash his
+  barricades), **Tommy** (mad-scientist dragonfly: mutates into giant/tiny/glowing forms), **Collin T** (gym giraffe:
+  tap fast to interrupt his flex) and **Tsimberg** (sunscreen wizard: hit 🧴 Sunscreen before his giant sun lands).
+  Then the rotation loops forever, harder each time, with random modifiers (Armored, Swift, Giant, Regenerating…).
+- **Boss fights:** hit **TAP ATTACK** (or tap the boss or Space). Taps build a combo up to +100%, and you don't need to mash.
+  Tap incoming projectiles to swat them. Abilities: 💣 Kelp Bomb, 🌀 Shell Slash, 👥 Shadow Otters,
+  🟢 Kelp Cyclone Sphere, ☁️ Spirit Fluff, 🧴 Sunscreen, ✨ Ultimate Fluff Form and 🌪️ Kelp-Tail Spirit.
+  The 🌟 meter fires the **Grand Raft Supernova**, where the whole family combines into one giant beam.
+- **You can't lose.** If the family runs out of health they get dizzy for a few seconds (tap to cheer them up),
+  then bounce back with bonus Determination. Bosses also tire out in long fights, so leaving it running always progresses,
+  and after 15 idle seconds the family casts abilities on their own.
+- Keys: Space = tap, 1–8 = abilities, F = Supernova, U = upgrades.
+
 ## Run it
 
 No build step and no dependencies. Just open the page:
@@ -74,6 +99,18 @@ Plain JavaScript files that share one global namespace (`OR`), loaded in order b
 | `js/world.js` | Sky & water rendering, the three places, particles, fish, bubbles, dive spots, kelp, log, buoy, lanterns |
 | `js/events.js` | The rare family moments, each a small generator "script" |
 | `js/dance.js` | The moonwalk power-up: choreography timeline, stage lights, dance-floor tiles |
+| `js/adventure/config.js` | **All Adventure balance numbers in one place** (damage, costs, boss scaling, spawn rates, cooldowns) |
+| `js/adventure/bosses.js` | The seven bosses: looks, attacks, gimmicks, lines. Copy one to add a new boss |
+| `js/adventure/boss.js` | Reusable boss framework: scaling, loop modifiers, intro/defeat, attack helpers, hazards |
+| `js/adventure/abilities.js` | Special abilities and the Grand Raft Supernova |
+| `js/adventure/upgrades.js` | Resources, upgrades, boss rewards, stat formulas, visual stages |
+| `js/adventure/gear.js` | Drawing of visible upgrades (armor, helmets, shields, auras, tails, halos) |
+| `js/adventure/scroller.js` | Side-scrolling biomes and scenery |
+| `js/adventure/entities.js` | Pickups and small enemies |
+| `js/adventure/squad.js` | The otter family in Adventure mode (pose, attacks, knockback, dizzy) |
+| `js/adventure/pool.js` | Pooled particles and projectiles |
+| `js/adventure/advui.js`, `adventure.js` | HUD, and the explore/boss/victory loop |
+| `js/adventure/assets.js` + `assets/` | Optional custom images/sounds with automatic fallback (see `assets/README.md`) |
 | `js/progress.js` | Unlock list, collections, moments album, saving |
 | `js/audio.js` | Synthesized sound (Web Audio, no files): water, splashes, bubbles, otter chirps and the generative lullaby |
 | `js/ui.js` | Counters, buttons, toasts, the Journal |
@@ -85,3 +122,7 @@ Plain JavaScript files that share one global namespace (`OR`), loaded in order b
 - *New behavior:* add `ACTIONS.myThing = { enter, update, exit }` in `otter.js` and a weight in an otter's `weights`.
 - *New moment:* push an entry into `OR.EVENTS` in `events.js`; `yield* wait(2)` / `yield* until(fn)` keep scripts readable.
 - *New unlock:* add to `OR.UNLOCKS` in `progress.js` and handle it in `Game.applyUnlock`.
+- *New boss:* copy an entry in `OR.BOSSES` (`js/adventure/bosses.js`), give it a reward in `OR.REWARDS`.
+- *New upgrade:* add to `OR.UPGRADES`, use its level in `OR.computeStats()` / `OR.gearFor()`.
+- *New enemy:* add to `OR.ENEMY_TYPES` in `entities.js` with a `draw()` and a spawn `weight`.
+- *New ability:* add to `OR.ABILITIES`, a cooldown in `BAL.abilities`, and an unlock rule in `OR.unlockedAbilities()`.

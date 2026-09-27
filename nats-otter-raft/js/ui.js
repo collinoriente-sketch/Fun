@@ -26,6 +26,7 @@
       e.nap.addEventListener('click', () => game.napTime());
       e.cheer.addEventListener('click', () => game.familyCheer());
       e.jBtn.addEventListener('click', () => this.openJournal());
+      document.getElementById('btnAdventure').addEventListener('click', () => game.setView('adventure'));
       e.close.addEventListener('click', () => this.closeJournal());
       e.journal.addEventListener('click', (ev) => {
         if (ev.target === e.journal) this.closeJournal();

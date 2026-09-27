@@ -51,6 +51,10 @@
       this.fish.push(new OR.Fish(this));
 
       this.ui = new OR.UI(this);
+      // Adventure mode (side-scrolling boss rush) lives alongside the cozy raft
+      this.adventure = new OR.Adventure(this);
+      this.adventure.resize(this.G.W, this.G.H);
+      this.setView(this.progress.state.view || 'adventure', true);
       this.bindInput();
       window.addEventListener('resize', () => this.resize());
       window.addEventListener('pagehide', () => this.save());
@@ -62,6 +66,19 @@
       setTimeout(() => this.ui.toast(first ? 'Meet the family! Tap an otter to say hi.' : 'Welcome back! The family missed you.', '🦦'), 900);
       this.last = performance.now();
       requestAnimationFrame((t) => this.frame(t));
+    }
+
+    // Switch between the cozy raft and Adventure mode.
+    setView(v, quiet) {
+      this.view = v;
+      this.progress.state.view = v;
+      this.progress.dirty = true;
+      document.body.classList.toggle('view-adv', v === 'adventure');
+      if (v === 'adventure') {
+        this.endEvent();
+        this.adventure.enter();
+      } else if (!quiet || this.adventure.active) this.adventure.exit();
+      this.last = performance.now();
     }
 
     // ------------------------------------------------------------ layout
@@ -93,6 +110,7 @@
         if (this.mode) this.computeSlots();
       }
       this.scene.rebuild();
+      if (this.adventure) this.adventure.resize(W, H);
     }
 
     // ------------------------------------------------------------ loop
@@ -102,8 +120,15 @@
       this.time += dt;
       const t0 = performance.now();
       try {
-        this.update(dt);
-        this.draw();
+        if (this.view === 'adventure' && this.adventure) {
+          this.adventure.update(dt);
+          this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+          this.adventure.draw(this.ctx);
+          this.progress.tick(dt);
+        } else {
+          this.update(dt);
+          this.draw();
+        }
       } catch (e) {
         console.error(e);
       }
@@ -708,6 +733,11 @@
         return [e.clientX - r.left, e.clientY - r.top];
       };
       c.addEventListener('pointerdown', (e) => {
+        if (this.view === 'adventure') {
+          const [ax, ay] = pos(e);
+          this.adventure.pointerDown(ax, ay);
+          return;
+        }
         const [x, y] = pos(e);
         this.audio.init();
         this.pointer.x = x;
@@ -724,6 +754,7 @@
         if (this.taps > 2) this.ui.hideHint();
       });
       c.addEventListener('pointermove', (e) => {
+        if (this.view === 'adventure') return;
         const [x, y] = pos(e);
         const p = this.pointer;
         p.x = x;
@@ -744,6 +775,7 @@
         } else if (d.mode === 'drag') c.style.cursor = 'grabbing';
       });
       const up = () => {
+        if (this.view === 'adventure') return;
         const d = this.pointer.down;
         this.pointer.down = null;
         if (!d) return;

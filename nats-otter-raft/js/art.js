@@ -236,13 +236,14 @@
   function drawLimb(ctx, o, side, ex, ey) {
     const P = o.pal;
     const [sx, sy] = A.shoulder(o, side);
+    const buff = o.gear && o.gear.muscle ? 1.45 : 1; // Muscle Fluff reward: beefy arms
     ctx.lineCap = 'round';
     limbPath(ctx, sx, sy, ex, ey, side);
-    ctx.lineWidth = 0.2;
+    ctx.lineWidth = 0.2 * buff;
     ctx.strokeStyle = P.line;
     ctx.stroke();
     limbPath(ctx, sx, sy, ex, ey, side);
-    ctx.lineWidth = 0.145;
+    ctx.lineWidth = 0.145 * buff;
     ctx.strokeStyle = P.fur;
     ctx.stroke();
   }
@@ -755,8 +756,10 @@
     ctx.translate(o.x, o.y + (q.bob - q.lift) * u);
     ctx.rotate(q.rot);
     ctx.scale(u * q.sx, u * q.sy);
-    ctx.globalAlpha = alpha;
+    ctx.globalAlpha = alpha * (o.alphaMul == null ? 1 : o.alphaMul);
     const breathe = 1 + Math.sin(t * (o.sleeping ? 1.4 : 2.2) + o.seed) * 0.018;
+    // Adventure gear hooks (see js/adventure/gear.js); cozy otters have no gear
+    if (o.gear && A.gearBack) A.gearBack(ctx, o, t);
     const by = S.bodyY;
 
     // tail
@@ -803,6 +806,7 @@
     furStrokes(ctx, 0, by + S.bodyRy * 0.15, S.bodyRx * 0.45, S.bodyRy * 0.5, 7, 'rgba(255,255,255,0.35)', o.seed + 2, 0.016);
 
     if (q.kelp > 0.02) drawKelpWrap(ctx, o, t, q.kelp);
+    if (o.gear && A.gearBody) A.gearBody(ctx, o, t);
 
     // feet poke up at the bottom
     drawFoot(ctx, o, -1, t, q);
@@ -825,6 +829,7 @@
     ctx.translate(0, -S.headY);
     drawHead(ctx, o, t, q);
     if (q.costume > 0.05) drawFedora(ctx, o, q.costume);
+    if (o.gear && A.gearHead) A.gearHead(ctx, o, t);
     ctx.restore();
 
     if (!lowL) {
@@ -836,6 +841,7 @@
       drawPaw(ctx, o, q.arx, q.ary, 1);
     }
     if (o.holding && itemHigh) A.drawItem(ctx, o.holding, 0, 0.02 - q.itemY, 0.17, t, o.seed);
+    if (o.gear && A.gearFront) A.gearFront(ctx, o, t);
 
     ctx.restore();
   };
