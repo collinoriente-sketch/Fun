@@ -332,6 +332,135 @@
       o2.stop(t + 2);
     }
 
+    // ------------------------------------------------------------ dance groove (moonwalk power-up)
+    // An original funky loop: kick, snare, hats, a plucky bass line and chord stabs at 112 bpm.
+
+    startGroove() {
+      if (!this.ctx || this.muted || !this.musicOn || this.grooveTimer) return;
+      const c = this.ctx;
+      if (this.musicTimer) {
+        clearInterval(this.musicTimer);
+        this.musicTimer = null;
+        if (this.musicBus) this.musicBus.gain.setTargetAtTime(0, c.currentTime, 0.3);
+      }
+      if (!this.grooveBus) {
+        this.grooveBus = c.createGain();
+        this.grooveBus.connect(this.master);
+      }
+      this.grooveBus.gain.cancelScheduledValues(c.currentTime);
+      this.grooveBus.gain.setValueAtTime(0.8, c.currentTime);
+      this.gStep = 0;
+      this.gNext = c.currentTime + 0.05;
+      this.grooveTimer = setInterval(() => this.scheduleGroove(), 100);
+      this.scheduleGroove();
+    }
+
+    stopGroove() {
+      if (!this.grooveTimer) return;
+      clearInterval(this.grooveTimer);
+      this.grooveTimer = null;
+      this.grooveBus.gain.setTargetAtTime(0, this.ctx.currentTime, 0.4);
+      if (this.musicOn && !this.muted) setTimeout(() => this.startMusic(), 900);
+    }
+
+    scheduleGroove() {
+      const c = this.ctx, six = 60 / 112 / 4;
+      while (this.gNext < c.currentTime + (document.hidden ? 2 : 0.4)) {
+        this.grooveStep(this.gStep % 32, this.gNext);
+        this.gNext += six;
+        this.gStep++;
+      }
+    }
+
+    grooveStep(s, t) {
+      const KICK = [0, 6, 8, 16, 22, 24, 27];
+      const SNARE = [4, 12, 20, 28];
+      const BASS = { 0: 33, 3: 33, 6: 36, 8: 38, 10: 40, 14: 38, 16: 33, 19: 33, 22: 43, 24: 41, 26: 40, 28: 36, 30: 38 };
+      if (KICK.includes(s)) this.kick(t);
+      if (SNARE.includes(s)) this.snare(t);
+      if (s % 2 === 0) this.hat(t, s === 14 || s === 30);
+      if (BASS[s] != null) this.bassPluck(BASS[s], t);
+      if (s === 2 || s === 10 || s === 18 || s === 26) this.stab(s < 16 ? [57, 60, 64, 67] : [55, 60, 62, 65], t);
+    }
+
+    noiseAt(t, type, f, dur, vol, q) {
+      const c = this.ctx;
+      const src = c.createBufferSource();
+      src.buffer = this.noise;
+      const fl = c.createBiquadFilter();
+      fl.type = type;
+      fl.frequency.value = f;
+      fl.Q.value = q || 0.7;
+      const g = c.createGain();
+      g.gain.setValueAtTime(vol, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      src.connect(fl).connect(g).connect(this.grooveBus);
+      src.start(t, Math.random());
+      src.stop(t + dur + 0.02);
+    }
+
+    kick(t) {
+      const c = this.ctx, o = c.createOscillator(), g = c.createGain();
+      o.frequency.setValueAtTime(140, t);
+      o.frequency.exponentialRampToValueAtTime(42, t + 0.12);
+      g.gain.setValueAtTime(0.32, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
+      o.connect(g).connect(this.grooveBus);
+      o.start(t);
+      o.stop(t + 0.3);
+    }
+
+    snare(t) {
+      this.noiseAt(t, 'bandpass', 1900, 0.16, 0.5, 0.6);
+      const c = this.ctx, o = c.createOscillator(), g = c.createGain();
+      o.type = 'triangle';
+      o.frequency.setValueAtTime(200, t);
+      o.frequency.exponentialRampToValueAtTime(150, t + 0.08);
+      g.gain.setValueAtTime(0.06, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.1);
+      o.connect(g).connect(this.grooveBus);
+      o.start(t);
+      o.stop(t + 0.12);
+    }
+
+    hat(t, open) {
+      this.noiseAt(t, 'highpass', 7500, open ? 0.18 : 0.035, 0.22, 0.5);
+    }
+
+    bassPluck(m, t) {
+      const c = this.ctx, o = c.createOscillator(), f = c.createBiquadFilter(), g = c.createGain();
+      o.type = 'sawtooth';
+      o.frequency.value = this.freq(m);
+      f.type = 'lowpass';
+      f.Q.value = 5;
+      f.frequency.setValueAtTime(900, t);
+      f.frequency.exponentialRampToValueAtTime(220, t + 0.2);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.13, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.24);
+      o.connect(f).connect(g).connect(this.grooveBus);
+      o.start(t);
+      o.stop(t + 0.26);
+    }
+
+    stab(chord, t) {
+      const c = this.ctx, f = c.createBiquadFilter(), g = c.createGain();
+      f.type = 'lowpass';
+      f.frequency.value = 2200;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.03, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+      f.connect(g).connect(this.grooveBus);
+      for (const m of chord) {
+        const o = c.createOscillator();
+        o.type = 'square';
+        o.frequency.value = this.freq(m);
+        o.connect(f);
+        o.start(t);
+        o.stop(t + 0.22);
+      }
+    }
+
     bell() {
       if (!this.ok('bell', 2)) return;
       this.tone('sine', 880, 878, 1.8, 0.03);

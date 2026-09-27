@@ -38,6 +38,10 @@ No build step and no dependencies. Just open the page:
 - **Nap Time** 🌙: they gather (by the kelp if there's some), hold paws and snooze.
 - **Family Cheer** 🙌 (unlockable): joined paws go up in a wave along the raft.
 - **Free Roam** 🌊 appears while the family is in a raft, nap or cheer. Tap it to let everyone swim off and do their own thing again (a nap wakes up). Modes also end on their own after a while.
+- **🧤 Moonwalk power-up:** every so often a sparkly sequined glove floats across the water. Tap it and the family
+  puts on fedoras, one rhinestone glove and white socks, and dances a routine under spotlights and a disco ball:
+  moonwalk, spins, a toe stand ("ow!"), a groove and a finale. The water lights up in tiles under their feet, and an
+  original funk groove plays (made in the browser, not a real song). It lasts about 22 seconds, and Free Roam ends it early.
 - **🎵 / 🔈** (top left) toggle the background music and all sound. The music is a slow, generative lullaby made in the browser, and it is softer and slower in the Moonlit Lagoon.
 - **📔 Journal**: meet the family, switch places, see unlocks and the family moments you've seen.
 
@@ -69,6 +73,7 @@ Plain JavaScript files that share one global namespace (`OR`), loaded in order b
 | `js/otter.js` | The `Otter` class: movement, gaze, blinking, pose easing, paw-holding arms, and the library of actions (float, nap, groom, dive, zoomies, rockplay…) |
 | `js/world.js` | Sky & water rendering, the three places, particles, fish, bubbles, dive spots, kelp, log, buoy, lanterns |
 | `js/events.js` | The rare family moments, each a small generator "script" |
+| `js/dance.js` | The moonwalk power-up: choreography timeline, stage lights, dance-floor tiles |
 | `js/progress.js` | Unlock list, collections, moments album, saving |
 | `js/audio.js` | Synthesized sound (Web Audio, no files): water, splashes, bubbles, otter chirps and the generative lullaby |
 | `js/ui.js` | Counters, buttons, toasts, the Journal |

@@ -247,14 +247,28 @@
     ctx.stroke();
   }
 
-  function drawPaw(ctx, o, ex, ey) {
+  function drawPaw(ctx, o, ex, ey, side) {
     const P = o.pal;
-    A.ellipse(ctx, ex, ey, 0.09, 0.082);
-    ctx.fillStyle = P.paw;
+    const gloved = side > 0 && o.q.costume > 0.5;
+    A.ellipse(ctx, ex, ey, gloved ? 0.11 : 0.09, gloved ? 0.1 : 0.082);
+    ctx.fillStyle = gloved ? '#fbfbff' : P.paw;
     ctx.fill();
     ctx.lineWidth = 0.028;
-    ctx.strokeStyle = P.line;
+    ctx.strokeStyle = gloved ? '#8f94ad' : P.line;
     ctx.stroke();
+    if (gloved) {
+      // rhinestones
+      const t = o.game ? o.game.time : 0;
+      for (let i = 0; i < 5; i++) {
+        const a = i * 1.3 + 0.4;
+        const tw = 0.4 + 0.6 * Math.abs(Math.sin(t * 6 + i * 1.7));
+        ctx.fillStyle = `rgba(${i % 2 ? '190,220,255' : '255,255,255'},${tw})`;
+        A.ellipse(ctx, ex + Math.cos(a) * 0.055, ey + Math.sin(a) * 0.05, 0.016, 0.016);
+        ctx.fill();
+      }
+      A.drawSparkle(ctx, ex + 0.07, ey - 0.08, 0.05 * (0.5 + 0.5 * Math.sin(t * 5)), '#ffffff', t);
+      return;
+    }
     // tiny toes
     ctx.lineWidth = 0.014;
     ctx.strokeStyle = U.rgba('#ffffff', 0.35);
@@ -269,7 +283,8 @@
   function drawFoot(ctx, o, side, t, q) {
     const P = o.pal, S = o.shape;
     ctx.save();
-    ctx.translate(side * S.bodyRx * 0.42, S.bodyY + S.bodyRy * 0.8);
+    // moonwalk: feet lift one at a time
+    ctx.translate(side * S.bodyRx * 0.42, S.bodyY + S.bodyRy * 0.8 - Math.max(0, side * q.step) * 0.14);
     ctx.rotate(side * 0.38 + Math.sin(t * 13 + side * 1.7) * 0.4 * q.kick + side * q.wiggle * 0.2);
     // webbed foot with the sole facing up at us
     ctx.beginPath();
@@ -278,10 +293,11 @@
     ctx.quadraticCurveTo(0, 0.27, 0.1, 0.22);
     ctx.quadraticCurveTo(0.15, 0.13, 0.08, -0.02);
     ctx.closePath();
-    ctx.fillStyle = P.paw;
+    const socks = q.costume > 0.5; // white dancing socks
+    ctx.fillStyle = socks ? '#ffffff' : P.paw;
     ctx.fill();
     ctx.lineWidth = 0.028;
-    ctx.strokeStyle = P.line;
+    ctx.strokeStyle = socks ? '#9aa0b5' : P.line;
     ctx.stroke();
     // toe beans!
     ctx.fillStyle = P.bean;
@@ -343,9 +359,44 @@
     }
   }
 
+  // Short curved strokes that read as fur texture. Positions are fixed per otter (seeded).
+  function furStrokes(ctx, cx, cy, rx, ry, n, color, seed, width) {
+    if (OR.lowFx) return;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width || 0.018;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    for (let i = 0; i < n; i++) {
+      const a = Math.sin(seed * 3.1 + i * 12.9898) * Math.PI;
+      const r = 0.25 + 0.65 * Math.abs(Math.sin(seed * 1.7 + i * 78.233));
+      const x = cx + Math.cos(a) * rx * r, y = cy + Math.sin(a) * ry * r;
+      const len = 0.05 + 0.03 * Math.abs(Math.sin(i * 4.1 + seed));
+      const tilt = Math.cos(a) * 0.5; // strands lean outward, like combed fur
+      ctx.moveTo(x - len * 0.6, y + len * 0.3);
+      ctx.quadraticCurveTo(x + tilt * len, y - len * 0.7, x + len * 0.6 + tilt * len, y + len * 0.2);
+    }
+    ctx.stroke();
+  }
+
   function drawHead(ctx, o, t, q) {
     const P = o.pal, S = o.shape;
     const hy = S.headY, hr = S.headR;
+    // fluffy cheek tufts poking out the sides
+    ctx.fillStyle = P.fur;
+    ctx.strokeStyle = P.line;
+    ctx.lineWidth = 0.026;
+    for (const s of [-1, 1]) {
+      for (let i = 0; i < 2; i++) {
+        const by0 = hy + hr * (0.02 + i * 0.22);
+        ctx.beginPath();
+        ctx.moveTo(s * hr * 0.9, by0 - hr * 0.1);
+        ctx.quadraticCurveTo(s * hr * 1.2, by0 + hr * 0.02, s * hr * (1.26 - i * 0.08), by0 + hr * 0.14);
+        ctx.quadraticCurveTo(s * hr * 1.05, by0 + hr * 0.12, s * hr * 0.88, by0 + hr * 0.16);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      }
+    }
     // ears
     for (const s of [-1, 1]) {
       A.ellipse(ctx, s * hr * 0.74, hy - hr * 0.6, hr * 0.2, hr * 0.18);
@@ -368,10 +419,26 @@
     ctx.lineWidth = 0.032;
     ctx.strokeStyle = P.line;
     ctx.stroke();
-    // pale face mask
+    // soft rim light along the top-left, like sun on wet fur
+    ctx.beginPath();
+    ctx.ellipse(0, hy, hr * 0.94, hr * 0.8, 0, Math.PI * 1.08, Math.PI * 1.55);
+    ctx.lineWidth = 0.035;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+    ctx.stroke();
+    furStrokes(ctx, 0, hy - hr * 0.45, hr * 0.7, hr * 0.28, 7, U.rgba(P.line, 0.28), o.seed + 5);
+    // pale face mask, with little fluffy cheeks of its own
     A.fluffPath(ctx, 0, hy + hr * 0.16, hr * 0.84, hr * 0.64, 16, 0.09, o.seed + 1, -0.1);
     ctx.fillStyle = P.face;
     ctx.fill();
+    for (const s of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(s * hr * 0.7, hy + hr * 0.1);
+      ctx.quadraticCurveTo(s * hr * 0.98, hy + hr * 0.3, s * hr * 0.9, hy + hr * 0.42);
+      ctx.quadraticCurveTo(s * hr * 0.78, hy + hr * 0.4, s * hr * 0.66, hy + hr * 0.46);
+      ctx.closePath();
+      ctx.fill();
+    }
 
     // tuft on top of the head
     if (o.def.tuft) {
@@ -475,6 +542,128 @@
     // accessories
     if (o.def.flower) drawFlower(ctx, -hr * 0.78, hy - hr * 0.62, hr * 0.26, t);
   }
+
+  // Black fedora with a white band, pops on with a little bounce.
+  function drawFedora(ctx, o, k) {
+    const S = o.shape, hr = S.headR;
+    ctx.save();
+    ctx.translate(hr * 0.1, S.headY - hr * 0.62);
+    ctx.rotate(-0.2);
+    const s = U.easeOutBack(U.clamp(k, 0, 1));
+    ctx.scale(s, s);
+    A.ellipse(ctx, 0, 0, hr * 1.0, hr * 0.24);
+    ctx.fillStyle = '#1c1b24';
+    ctx.fill();
+    ctx.lineWidth = 0.025;
+    ctx.strokeStyle = '#000';
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-hr * 0.56, -hr * 0.02);
+    ctx.bezierCurveTo(-hr * 0.62, -hr * 0.62, -hr * 0.3, -hr * 0.74, 0, -hr * 0.6);
+    ctx.bezierCurveTo(hr * 0.3, -hr * 0.74, hr * 0.62, -hr * 0.62, hr * 0.56, -hr * 0.02);
+    ctx.closePath();
+    ctx.fillStyle = '#26252f';
+    ctx.fill();
+    ctx.stroke();
+    ctx.save();
+    ctx.clip();
+    ctx.fillStyle = '#f7f7fb';
+    ctx.fillRect(-hr, -hr * 0.26, hr * 2, hr * 0.13);
+    ctx.restore();
+    ctx.beginPath();
+    ctx.moveTo(-hr * 0.4, -hr * 0.34);
+    ctx.quadraticCurveTo(-hr * 0.44, -hr * 0.55, -hr * 0.25, -hr * 0.62);
+    ctx.lineWidth = 0.03;
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // The power-up: one sparkly sequined glove floating on the water.
+  A.drawGlove = function (ctx, x, y, s, t) {
+    ctx.save();
+    const pulse = 0.75 + 0.25 * Math.sin(t * 4);
+    const halo = ctx.createRadialGradient(x, y, 0, x, y, s * 1.9);
+    halo.addColorStop(0, `rgba(255,255,255,${0.55 * pulse})`);
+    halo.addColorStop(0.5, `rgba(200,180,255,${0.25 * pulse})`);
+    halo.addColorStop(1, 'rgba(200,180,255,0)');
+    ctx.fillStyle = halo;
+    ctx.fillRect(x - s * 2, y - s * 2, s * 4, s * 4);
+    ctx.translate(x, y);
+    ctx.rotate(Math.sin(t * 1.5) * 0.15 - 0.15);
+    ctx.lineWidth = s * 0.06;
+    ctx.strokeStyle = '#8f94ad';
+    ctx.fillStyle = '#fbfbff';
+    const cap = (cx, cy, w, h, rot) => {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(rot || 0);
+      ctx.beginPath();
+      ctx.moveTo(-w / 2, 0);
+      ctx.lineTo(-w / 2, -h + w / 2);
+      ctx.arc(0, -h + w / 2, w / 2, Math.PI, 0);
+      ctx.lineTo(w / 2, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    };
+    cap(-s * 0.27, -s * 0.15, s * 0.17, s * 0.5, -0.12);
+    cap(-s * 0.09, -s * 0.2, s * 0.18, s * 0.62, -0.03);
+    cap(s * 0.1, -s * 0.2, s * 0.18, s * 0.6, 0.04);
+    cap(s * 0.27, -s * 0.15, s * 0.16, s * 0.46, 0.14);
+    cap(-s * 0.36, s * 0.12, s * 0.17, s * 0.42, -1.0);
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.38, -s * 0.2);
+    ctx.lineTo(s * 0.38, -s * 0.2);
+    ctx.quadraticCurveTo(s * 0.42, s * 0.35, s * 0.3, s * 0.42);
+    ctx.lineTo(-s * 0.3, s * 0.42);
+    ctx.quadraticCurveTo(-s * 0.42, s * 0.35, -s * 0.38, -s * 0.2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#e8e9f5';
+    ctx.fillRect(-s * 0.34, s * 0.38, s * 0.68, s * 0.2);
+    ctx.strokeRect(-s * 0.34, s * 0.38, s * 0.68, s * 0.2);
+    for (let i = 0; i < 14; i++) {
+      const px = Math.sin(i * 12.9898) * s * 0.3, py = Math.sin(i * 78.233) * s * 0.35 + s * 0.02;
+      const tw = Math.abs(Math.sin(t * 5 + i * 1.3));
+      ctx.fillStyle = `rgba(${['255,255,255', '190,215,255', '255,200,235'][i % 3]},${0.35 + tw * 0.65})`;
+      A.ellipse(ctx, px, py, s * 0.035, s * 0.035);
+      ctx.fill();
+    }
+    ctx.restore();
+    A.drawSparkle(ctx, x + s * 0.55, y - s * 0.6, s * 0.28 * pulse, '#ffffff', t);
+    A.drawSparkle(ctx, x - s * 0.6, y + s * 0.1, s * 0.18 * (1.3 - pulse), '#fff3b0', -t);
+  };
+
+  A.drawDiscoBall = function (ctx, x, y, r, t) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(220,220,240,0.7)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, y - r);
+    ctx.stroke();
+    A.ellipse(ctx, x, y, r, r);
+    const g = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, r * 0.1, x, y, r);
+    g.addColorStop(0, '#ffffff');
+    g.addColorStop(1, '#8a8fa8');
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.save();
+    ctx.clip();
+    for (let row = -4; row <= 4; row++) {
+      for (let col = -5; col <= 5; col++) {
+        const cx = x + ((col + (t * 0.8) % 1) * r) / 4, cy = y + (row * r) / 4;
+        const tw = Math.abs(Math.sin(t * 3 + row * 1.7 + col * 2.3));
+        ctx.fillStyle = `rgba(255,255,255,${0.15 + tw * 0.5})`;
+        ctx.fillRect(cx - r * 0.1, cy - r * 0.1, r * 0.19, r * 0.19);
+      }
+    }
+    ctx.restore();
+    ctx.restore();
+  };
 
   function drawFlower(ctx, x, y, r, t) {
     ctx.save();
@@ -594,13 +783,24 @@
     A.fluffPath(ctx, 0, by, S.bodyRx * breathe, S.bodyRy, 22, S.fluff, o.seed * 3, S.pear);
     ctx.fillStyle = bg;
     ctx.fill();
+    // the lower half sits in the water, so it's a touch darker
+    const shade = ctx.createLinearGradient(0, by, 0, by + S.bodyRy * 1.2);
+    shade.addColorStop(0, 'rgba(10,40,80,0)');
+    shade.addColorStop(1, 'rgba(10,40,80,0.2)');
+    ctx.fillStyle = shade;
+    ctx.fill();
     ctx.lineWidth = 0.034;
     ctx.strokeStyle = P.line;
     ctx.stroke();
+    furStrokes(ctx, 0, by - S.bodyRy * 0.1, S.bodyRx * 0.85, S.bodyRy * 0.8, 12, U.rgba(P.line, 0.22), o.seed);
     // tummy
     A.fluffPath(ctx, 0, by + S.bodyRy * 0.12, S.bodyRx * 0.62 * breathe, S.bodyRy * 0.66, 14, S.fluff * 0.7, o.seed, S.pear * 0.6);
-    ctx.fillStyle = P.belly;
+    const tg = ctx.createRadialGradient(-S.bodyRx * 0.15, by, 0.02, 0, by + S.bodyRy * 0.12, S.bodyRy * 0.7);
+    tg.addColorStop(0, U.lighten(P.belly, 0.2));
+    tg.addColorStop(1, P.belly);
+    ctx.fillStyle = tg;
     ctx.fill();
+    furStrokes(ctx, 0, by + S.bodyRy * 0.15, S.bodyRx * 0.45, S.bodyRy * 0.5, 7, 'rgba(255,255,255,0.35)', o.seed + 2, 0.016);
 
     if (q.kelp > 0.02) drawKelpWrap(ctx, o, t, q.kelp);
 
@@ -616,23 +816,24 @@
 
     const itemHigh = q.itemY > 0.35;
     if (o.holding && !itemHigh) A.drawItem(ctx, o.holding, 0, 0.02 - q.itemY, 0.17, t, o.seed);
-    if (lowL) drawPaw(ctx, o, q.alx, q.aly);
-    if (lowR) drawPaw(ctx, o, q.arx, q.ary);
+    if (lowL) drawPaw(ctx, o, q.alx, q.aly, -1);
+    if (lowR) drawPaw(ctx, o, q.arx, q.ary, 1);
 
     ctx.save();
     ctx.translate(0, S.headY);
     ctx.rotate(q.tilt);
     ctx.translate(0, -S.headY);
     drawHead(ctx, o, t, q);
+    if (q.costume > 0.05) drawFedora(ctx, o, q.costume);
     ctx.restore();
 
     if (!lowL) {
       drawLimb(ctx, o, -1, q.alx, q.aly);
-      drawPaw(ctx, o, q.alx, q.aly);
+      drawPaw(ctx, o, q.alx, q.aly, -1);
     }
     if (!lowR) {
       drawLimb(ctx, o, 1, q.arx, q.ary);
-      drawPaw(ctx, o, q.arx, q.ary);
+      drawPaw(ctx, o, q.arx, q.ary, 1);
     }
     if (o.holding && itemHigh) A.drawItem(ctx, o.holding, 0, 0.02 - q.itemY, 0.17, t, o.seed);
 

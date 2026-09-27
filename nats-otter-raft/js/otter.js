@@ -6,11 +6,11 @@
   const U = OR.util;
 
   const CHEST = { alx: -0.13, aly: 0.02, arx: 0.13, ary: 0.02 };
-  const POSE_KEYS = ['eo', 'happy', 'yawn', 'oh', 'kick', 'lean', 'sub', 'blush', 'lift', 'sx', 'sy', 'alx', 'aly', 'arx', 'ary', 'lookX', 'lookY', 'tilt', 'kelp', 'itemY', 'wiggle'];
-  const FAST_KEYS = { alx: 12, aly: 12, arx: 12, ary: 12, lift: 14, sx: 14, sy: 14, itemY: 16, lookX: 7, lookY: 7 };
+  const POSE_KEYS = ['eo', 'happy', 'yawn', 'oh', 'kick', 'lean', 'sub', 'blush', 'lift', 'sx', 'sy', 'alx', 'aly', 'arx', 'ary', 'lookX', 'lookY', 'tilt', 'kelp', 'itemY', 'wiggle', 'costume', 'step'];
+  const FAST_KEYS = { step: 18, costume: 6, alx: 12, aly: 12, arx: 12, ary: 12, lift: 14, sx: 14, sy: 14, itemY: 16, lookX: 7, lookY: 7 };
 
   function basePose() {
-    return Object.assign({ eo: 1, happy: 0, yawn: 0, oh: 0, kick: 0, lean: 0, sub: 0, blush: 0.25, lift: 0, sx: 1, sy: 1, lookX: 0, lookY: 0, tilt: 0, kelp: 0, itemY: 0, wiggle: 0, rot: 0, bob: 0 }, CHEST);
+    return Object.assign({ eo: 1, happy: 0, yawn: 0, oh: 0, kick: 0, lean: 0, sub: 0, blush: 0.25, lift: 0, sx: 1, sy: 1, lookX: 0, lookY: 0, tilt: 0, kelp: 0, itemY: 0, wiggle: 0, costume: 0, step: 0, rot: 0, bob: 0 }, CHEST);
   }
 
   // States in which an otter is relaxed enough to hold a paw.
@@ -177,6 +177,7 @@
       this.t += dt;
 
       // paws follow a partner's hand
+      if (g.mode && g.mode.type === 'dance') p.costume = 1;
       if (this.links.length && this.linkable) this.poseHolding();
       if (this.holding && !this.links.length && this.actionName !== 'rockplay' && this.actionName !== 'groom' && this.actionName !== 'scratch') {
         p.alx = -0.1; p.aly = 0.0; p.arx = 0.1; p.ary = 0.0;
@@ -249,7 +250,13 @@
       const bobSpeed = this.sleeping ? 1.1 : 1.7;
       q.bob = Math.sin(t * bobSpeed + this.seed) * 0.035 + Math.sin(t * 0.7 + this.seed * 2) * 0.02;
       const sway = Math.sin(t * 0.8 + this.seed) * 0.06;
-      q.rot = U.damp(q.rot, (this.forcedRot != null ? this.forcedRot : sway + q.lean) + this.extraRot, 8, dt);
+      // ease along the shortest way round, so a finished spin doesn't unwind backwards
+      const rotTarget = (this.forcedRot != null ? this.forcedRot : sway + q.lean) + this.extraRot;
+      let dr = (rotTarget - q.rot) % U.TAU;
+      if (dr > Math.PI) dr -= U.TAU;
+      if (dr < -Math.PI) dr += U.TAU;
+      q.rot += dr * (1 - Math.exp(-8 * dt));
+      if (this.extraRot === 0) q.rot = Math.atan2(Math.sin(q.rot), Math.cos(q.rot));
       this.extraRot = 0;
       this.forcedRot = null;
 
@@ -879,6 +886,7 @@
       const s = m.slots[o.id];
       if (!s) return true;
       const d = U.dist(o.x, o.y, s.x, s.y);
+      if (m.type === 'dance') return OR.Dance.pose(o, dt, st, s, d);
       if (!st.arrived) {
         o.steer(s.x, s.y, 1.25, dt);
         if (d < o.u * 0.25) st.arrived = true;

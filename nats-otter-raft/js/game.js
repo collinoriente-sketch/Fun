@@ -33,7 +33,8 @@
       this.momentCd = {};
       this.raftCd = 0;
       this.passiveT = U.rand(15, 25);
-      this.spawnT = { fish: 1, bubble: 2, item: 3, lantern: 4, leap: 15 };
+      this.spawnT = { fish: 1, bubble: 2, item: 3, lantern: 4, leap: 15, glove: this.progress.state.dances ? U.rand(40, 80) : 16 };
+      this.glove = null;
       this.otters = [];
       this.byId = {};
 
@@ -113,6 +114,12 @@
     // Slow device? Render at a lower pixel density rather than burn CPU.
     adaptQuality(ms) {
       this.cost = this.cost == null ? ms : this.cost * 0.97 + ms * 0.03;
+      if (this.cost > 16 && this.dpr <= 1 && !this.lowFx && this.time - (this.adaptedAt || 0) > 3) {
+        // still slow at the lowest resolution: drop the purely decorative extras
+        this.lowFx = OR.lowFx = true;
+        this.adaptedAt = this.time;
+        this.cost = 8;
+      }
       if (this.cost > 14 && this.dpr > 1 && this.time - (this.adaptedAt || 0) > 3) {
         this.maxDpr = Math.max(1, this.dpr - 0.5);
         this.adaptedAt = this.time;
@@ -132,6 +139,10 @@
       for (const b of this.bubbles) b.update(dt);
       for (const it of this.items) it.update(dt);
       for (const l of this.lanterns) l.update(dt);
+      if (this.glove) {
+        this.glove.update(dt);
+        if (this.glove.dead) this.glove = null;
+      }
       if (this.decor.buoy) this.decor.buoy.update(dt);
       this.fish = this.fish.filter((f) => !f.dead);
       this.items = this.items.filter((i) => !i.dead);
@@ -185,6 +196,13 @@
       if (s.lantern <= 0) {
         s.lantern = U.rand(12, 26);
         if (P.has('lanterns') && this.lanterns.length < 3) this.lanterns.push(new OR.Lantern(this));
+      }
+      if (s.glove <= 0) {
+        s.glove = U.rand(60, 110);
+        if (!this.glove && !(this.mode && this.mode.type === 'dance')) {
+          this.glove = new OR.PowerGlove(this);
+          if (!this.progress.state.dances) this.ui.toast('A sparkly glove is floating by… tap it!', '🧤');
+        }
       }
       if (s.leap <= 0) {
         s.leap = U.rand(18, 35);
@@ -389,6 +407,7 @@
 
     setMode(type, dur, fromEvent) {
       if (!fromEvent) this.endEvent();
+      if (this.mode && this.mode.type === 'dance') this.audio.stopGroove();
       const G = this.G;
       const xs = this.otters.map((o) => o.x), ys = this.otters.map((o) => o.y);
       let cx = xs.reduce((a, b) => a + b, 0) / xs.length;
@@ -410,6 +429,7 @@
 
     computeSlots() {
       const m = this.mode, G = this.G;
+      if (m.type === 'dance') return OR.Dance.slots(this, m);
       const order = OR.RAFT_ORDER.map((id) => this.byId[id]);
       const us = order.map((o) => G.S * o.size * G.depth(m.cy));
       const gaps = [];
@@ -432,7 +452,23 @@
     }
 
     updateMode(dt) {
+      if (this.mode && this.mode.type === 'dance') OR.Dance.update(this);
       if (this.mode && this.time > this.mode.until) this.endMode(false);
+    }
+
+    // Moonwalk power-up!
+    startDance() {
+      const gl = this.glove;
+      this.glove = null;
+      this.audio.init();
+      if (gl) {
+        this.fx.sparkle(gl.x, gl.y, 10, this.G.S * 0.3);
+        this.fx.splash(gl.x, gl.y, this.G.S * 0.6);
+      }
+      this.audio.collect();
+      this.progress.add('dances', 1);
+      OR.Dance.start(this);
+      this.ui.toast('Moonwalk power-up! Everybody dance!', '🕺');
     }
 
     // Let everyone go back to doing their own thing.
@@ -440,6 +476,7 @@
       const m = this.mode;
       if (!m) return;
       this.mode = null;
+      if (m.type === 'dance') this.audio.stopGroove();
       for (const o of this.otters) {
         if (o.actionName !== 'slot') continue;
         if (m.type === 'nap' && !wake) o.next = ['nap', { dur: U.rand(2, 12) }];
@@ -471,6 +508,10 @@
 
     updateLinks(dt) {
       const os = this.otters, m = this.mode;
+      if (m && m.type === 'dance') {
+        for (const o of os) o.links = [];
+        return;
+      }
       // let go when someone swims off
       for (const a of os) {
         a.links = a.links.filter((b) => b.links.includes(a) && a.linkable && b.linkable && U.dist(a.x, a.y, b.x, b.y) < a.restDist(b) * 1.8);
@@ -709,6 +750,8 @@
         if (d.mode === 'drag') d.o.do('float', { dur: 1.2 });
         else if (d.mode === 'rub') d.o.do('float', { dur: 3, happy: true });
         else {
+          const gl = this.glove;
+          if (gl && U.dist(d.x, d.y, gl.x, gl.y) < this.G.S * (d.o ? 0.6 : 1.1)) return this.startDance();
           // a sparkle right under the finger wins over the otter floating next to it
           const it = this.itemAt(d.x, d.y, d.o ? this.G.S * 0.45 : this.G.S * 1.0);
           if (it) this.pickUp(it);
@@ -796,17 +839,20 @@
       for (const it of this.items) it.draw(ctx, t);
       for (const f of this.fish) f.draw(ctx, t);
       for (const o of this.otters) A.drawUnderwater(ctx, o, t);
+      OR.Dance.drawDim(ctx, this);
       this.fx.drawLow(ctx);
       if (this.decor.buoy) this.decor.buoy.draw(ctx, t);
       if (this.decor.log) this.decor.log.draw(ctx, t);
       for (const o of this.otters) if (!o.riding) A.drawWaterRing(ctx, o, t);
       for (const b of this.bubbles) b.draw(ctx);
+      if (this.glove) this.glove.draw(ctx, t);
       const sorted = this.otters.slice().sort((a, b) => this.drawKey(a) - this.drawKey(b));
       for (const o of sorted) A.drawOtter(ctx, o, t);
       for (const f of this.fish) f.drawAir(ctx, t);
       for (const l of this.lanterns) l.draw(ctx, t);
       this.fx.drawHigh(ctx);
       this.scene.drawOverlay(ctx, t);
+      OR.Dance.drawLights(ctx, this);
       for (const o of sorted) this.drawName(ctx, o);
       for (const o of sorted) this.drawSpeech(ctx, o);
     }

@@ -67,6 +67,25 @@
       glow.addColorStop(1, U.rgba(a.sun, 0));
       ctx.fillStyle = glow;
       ctx.fillRect(sx - sr * 4, sy - sr * 4, sr * 8, sr * 8);
+      if (!a.moon) {
+        // soft sun rays fanning down toward the water
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        for (let i = 0; i < 7; i++) {
+          const ang = Math.PI / 2 + (i - 3) * 0.28 + Math.sin(i * 3.7) * 0.06;
+          const len = G.H * 0.9, wdt = 0.05 + (i % 3) * 0.02;
+          const rg = ctx.createLinearGradient(sx, sy, sx + Math.cos(ang) * len, sy + Math.sin(ang) * len);
+          rg.addColorStop(0, U.rgba(a.sun, 0.16));
+          rg.addColorStop(1, U.rgba(a.sun, 0));
+          ctx.fillStyle = rg;
+          ctx.beginPath();
+          ctx.moveTo(sx, sy);
+          ctx.lineTo(sx + Math.cos(ang - wdt) * len, sy + Math.sin(ang - wdt) * len);
+          ctx.lineTo(sx + Math.cos(ang + wdt) * len, sy + Math.sin(ang + wdt) * len);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
       A.ellipse(ctx, sx, sy, sr, sr);
       ctx.fillStyle = a.sun;
       ctx.fill();
@@ -129,13 +148,74 @@
         ctx.fillStyle = lg;
         ctx.fillRect(x - r, y - r, r * 2, r * 2);
       }
+      // a thin bright line where sea meets sky
+      ctx.fillStyle = `rgba(${a.wave},0.35)`;
+      ctx.fillRect(0, hz, G.W, 1.5);
       this.sunPos = [sx, sy, sr];
+      this.buildCaustics();
+      this.buildVignette();
 
       if (!this.clouds.length || this.cloudW !== G.W) {
         this.cloudW = G.W;
         this.clouds = [];
         for (let i = 0; i < 4; i++) this.clouds.push({ x: U.rand(G.W), y: U.rand(0.15, 0.6) * hz, s: U.rand(0.7, 1.3) * (G.S * 0.9), v: U.rand(4, 10) });
       }
+    }
+
+    // A tileable-ish texture of wobbly light lines, drifted across the water each frame.
+    buildCaustics() {
+      const G = this.game.G, a = this.area;
+      const w = Math.ceil(G.W), h = Math.ceil(G.H - G.horizon);
+      const c = (this.caustic = this.caustic || document.createElement('canvas'));
+      c.width = w;
+      c.height = h;
+      const ctx = c.getContext('2d');
+      ctx.clearRect(0, 0, w, h);
+      ctx.strokeStyle = `rgba(${a.wave},1)`;
+      ctx.lineCap = 'round';
+      const n = Math.round((w * h) / 9000);
+      for (let i = 0; i < n; i++) {
+        const x = Math.random() * w, y = Math.random() * h;
+        const k = y / h; // bigger nearer the viewer
+        const r = (8 + Math.random() * 14) * (0.4 + k * 1.2);
+        ctx.globalAlpha = 0.25 + Math.random() * 0.35;
+        ctx.lineWidth = 0.8 + k * 1.6;
+        ctx.beginPath();
+        const pts = 5;
+        for (let j = 0; j <= pts; j++) {
+          const ang = (j / pts) * TAU;
+          const rr = r * (0.7 + 0.3 * Math.sin(ang * 3 + i));
+          const px = x + Math.cos(ang) * rr, py = y + Math.sin(ang) * rr * 0.45;
+          if (j === 0) ctx.moveTo(px, py);
+          else ctx.quadraticCurveTo(x + Math.cos(ang - 0.6) * rr * 1.2, y + Math.sin(ang - 0.6) * rr * 0.55, px, py);
+        }
+        ctx.stroke();
+      }
+    }
+
+    buildVignette() {
+      const G = this.game.G;
+      const c = (this.vignette = this.vignette || document.createElement('canvas'));
+      c.width = Math.ceil(G.W / 2);
+      c.height = Math.ceil(G.H / 2);
+      const ctx = c.getContext('2d');
+      const r = Math.hypot(c.width, c.height) / 2;
+      const g = ctx.createRadialGradient(c.width / 2, c.height * 0.55, r * 0.55, c.width / 2, c.height * 0.55, r * 1.05);
+      g.addColorStop(0, 'rgba(10,30,60,0)');
+      g.addColorStop(1, this.area.moon ? 'rgba(0,5,25,0.45)' : 'rgba(10,40,80,0.22)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, c.width, c.height);
+    }
+
+    drawCaustics(ctx, t) {
+      if (!this.caustic || this.game.lowFx) return;
+      const G = this.game.G, w = this.caustic.width, h = this.caustic.height;
+      const ox = ((t * 6) % w + w) % w;
+      ctx.save();
+      ctx.globalAlpha = this.area.moon ? 0.05 : 0.07 + Math.sin(t * 0.7) * 0.02;
+      ctx.drawImage(this.caustic, ox - w, G.horizon, w, h);
+      ctx.drawImage(this.caustic, ox, G.horizon, w, h);
+      ctx.restore();
     }
 
     drawLighthouse(ctx, x, base, h) {
@@ -195,15 +275,24 @@
       const g = this.game, G = g.G, a = this.area;
       ctx.drawImage(this.bg, 0, 0, G.W, G.H);
 
-      // clouds
-      ctx.fillStyle = a.cloud;
-      for (const c of this.clouds) {
+      // clouds: a soft shadowed underside, then the bright puffs
+      const puffs = [[0, 0, 1], [-1.1, 0.25, 0.7], [1.1, 0.2, 0.75], [-0.4, -0.45, 0.7], [0.5, -0.35, 0.65]];
+      const cloudPath = (c, dy, k) => {
         ctx.beginPath();
-        const puffs = [[0, 0, 1], [-1.1, 0.25, 0.7], [1.1, 0.2, 0.75], [-0.4, -0.45, 0.7], [0.5, -0.35, 0.65]];
         for (const [px, py, pr] of puffs) {
-          ctx.moveTo(c.x + px * c.s + pr * c.s * 0.8, c.y + py * c.s * 0.8);
-          ctx.arc(c.x + px * c.s, c.y + py * c.s * 0.8, pr * c.s * 0.8, 0, TAU);
+          ctx.moveTo(c.x + px * c.s + pr * c.s * 0.8 * k, c.y + py * c.s * 0.8 + dy);
+          ctx.arc(c.x + px * c.s, c.y + py * c.s * 0.8 + dy, pr * c.s * 0.8 * k, 0, TAU);
         }
+      };
+      for (const c of this.clouds) {
+        cloudPath(c, c.s * 0.12, 1);
+        ctx.fillStyle = a.moon ? 'rgba(60,70,120,0.25)' : 'rgba(150,175,205,0.45)';
+        ctx.fill();
+        cloudPath(c, 0, 0.97);
+        ctx.fillStyle = a.cloud;
+        ctx.fill();
+        cloudPath(c, -c.s * 0.1, 0.8);
+        ctx.fillStyle = a.moon ? 'rgba(200,210,255,0.08)' : 'rgba(255,255,255,0.5)';
         ctx.fill();
       }
 
@@ -219,6 +308,8 @@
         ctx.quadraticCurveTo(b.x + w * 0.45, b.y - 4 * b.s, b.x + w, b.y - f);
         ctx.stroke();
       }
+
+      this.drawCaustics(ctx, t);
 
       // glitter path under the sun / moon
       if (this.sunPos) {
@@ -272,6 +363,7 @@
         ctx.fillStyle = a.tint;
         ctx.fillRect(0, 0, G.W, G.H);
       }
+      if (this.vignette) ctx.drawImage(this.vignette, 0, 0, G.W, G.H);
       if (g.mode && g.mode.type === 'nap') {
         ctx.fillStyle = 'rgba(40,40,90,0.08)';
         ctx.fillRect(0, 0, G.W, G.H);
@@ -355,6 +447,10 @@
     pickup(type, x, y, r) {
       this.high.push({ k: 'item', type, x, y, r, t: 0, life: 1.1 });
     }
+    // a glowing dance-floor square that lights up and fades
+    tile(x, y, w, color) {
+      this.low.push({ k: 'tile', x, y, w, c: color, t: 0, life: 0.9 });
+    }
     bubble(x, y, r) {
       this.high.push({ k: 'bub', x, y, r: Math.max(2, r), t: 0, life: 0.9, vx: U.rand(-6, 6) });
     }
@@ -397,6 +493,20 @@
       const wave = this.game.scene.area.wave;
       for (const p of this.low) {
         const k = p.t / p.life;
+        if (p.k === 'tile') {
+          ctx.save();
+          ctx.globalAlpha = (1 - k) * 0.95;
+          ctx.translate(p.x, p.y);
+          ctx.scale(1, 0.42);
+          ctx.rotate(Math.PI / 4);
+          const s = p.w * 0.85;
+          ctx.fillStyle = p.c;
+          ctx.shadowColor = p.c;
+          ctx.shadowBlur = 18;
+          ctx.fillRect(-s / 2, -s / 2, s, s);
+          ctx.restore();
+          continue;
+        }
         const r = U.lerp(p.r0, p.r1, 1 - Math.pow(1 - k, 2));
         A.ellipse(ctx, p.x, p.y, r, r * 0.42);
         ctx.lineWidth = Math.max(1, r * 0.06) * (1 - k * 0.5);
@@ -837,5 +947,35 @@
     }
   }
 
-  Object.assign(OR, { Scene, FX, Fish, Bubble, DiveSpot, KelpPatch, Log, Buoy, Lantern });
+  // The moonwalk power-up drifting across the water.
+  class PowerGlove {
+    constructor(game) {
+      const G = game.G;
+      this.game = game;
+      this.dir = U.chance(0.5) ? 1 : -1;
+      this.x = this.dir > 0 ? G.left : G.right;
+      this.y = U.rand(G.top + G.S, G.bottom - G.S);
+      this.t = 0;
+      this.life = 40;
+    }
+    update(dt) {
+      this.t += dt;
+      this.x += this.dir * this.game.G.S * 0.25 * dt;
+      if (this.t > this.life) this.dead = true;
+    }
+    draw(ctx, t) {
+      const S = this.game.G.S;
+      const fade = Math.min(1, this.t / 0.8) * Math.min(1, (this.life - this.t) / 1.5);
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, fade);
+      A.ellipse(ctx, this.x, this.y + S * 0.3, S * 0.45, S * 0.14);
+      ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      A.drawGlove(ctx, this.x, this.y + Math.sin(t * 2) * 3, S * 0.55, t);
+      ctx.restore();
+    }
+  }
+
+  Object.assign(OR, { PowerGlove, Scene, FX, Fish, Bubble, DiveSpot, KelpPatch, Log, Buoy, Lantern });
 })(window.OR);
