@@ -25,7 +25,7 @@
     constructor() {
       const saved = U.storage.get(KEY, null) || {};
       this.state = Object.assign(
-        { hearts: 0, rocks: 0, shells: 0, pearls: 0, happiness: 70, unlocked: [], moments: {}, area: 'cove', muted: false, visits: 0 },
+        { hearts: 0, rocks: 0, shells: 0, pearls: 0, happiness: 70, unlocked: [], moments: {}, area: 'cove', muted: false, music: true, visits: 0 },
         saved
       );
       this.state.visits++;

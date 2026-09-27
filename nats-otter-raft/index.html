@@ -15,7 +15,11 @@
   <canvas id="game" aria-label="An ocean where five sea otters float, play and hold paws"></canvas>
 
   <header class="hud">
-    <div class="brand"><span class="brand-otter" aria-hidden="true">🦦</span><h1>Nat's Otter Raft</h1></div>
+    <div class="left">
+      <div class="brand"><span class="brand-otter" aria-hidden="true">🦦</span><h1>Nat's Otter Raft</h1></div>
+      <button id="btnMusic" class="icon" type="button" aria-label="Music">🎵</button>
+      <button id="btnMute" class="icon" type="button" aria-label="Sound">🔈</button>
+    </div>
     <div class="right">
       <div class="stats">
         <div class="stat happy" title="Family happiness"><span aria-hidden="true">💕</span><span class="meter"><i id="happyFill"></i></span></div>
@@ -36,8 +40,8 @@
     <button id="btnCall" class="primary" type="button"><span aria-hidden="true">🤝</span><span class="lbl">Call the Family</span></button>
     <button id="btnNap" type="button" aria-label="Nap Time" title="Nap Time"><span aria-hidden="true">🌙</span><span class="lbl">Nap Time</span></button>
     <button id="btnCheer" type="button" aria-label="Family Cheer" title="Family Cheer" hidden><span aria-hidden="true">🙌</span><span class="lbl">Family Cheer</span></button>
+    <button id="btnFree" class="free" type="button" aria-label="Free Roam" title="Let everyone swim free" hidden><span aria-hidden="true">🌊</span><span class="lbl">Free Roam</span></button>
     <button id="btnJournal" class="icon" type="button" aria-label="Open the Raft Journal" title="Raft Journal">📔<i id="journalDot" hidden></i></button>
-    <button id="btnMute" class="icon" type="button" aria-label="Sound">🔈</button>
   </nav>
 
   <div id="journal" class="scrim" hidden>

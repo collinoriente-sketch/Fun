@@ -32,11 +32,13 @@ No build step and no dependencies. Just open the page:
 - **Drag an otter** to scoop it up and plop it somewhere else.
 - **Press and hold on an otter** for a tummy rub (happy wiggly feet, lots of hearts).
 - **Tap the water** to make a ripple. The curious ones (Finny, Winston) swim over to look.
-- **Tap a sparkle** in the water and the best otter for the job dives for it (Collin loves rocks, Finny loves shiny things).
+- **Tap a sparkle** (the glinting rings in the water) to collect that rock, shell or pearl right away. The otters dive for them on their own too.
 - **Tap floating bubbles** to pop them.
 - **Call the Family** 🤝: everyone lines up and holds paws, Natalie, Collin, Winston, Gussy, Finny.
 - **Nap Time** 🌙: they gather (by the kelp if there's some), hold paws and snooze.
 - **Family Cheer** 🙌 (unlockable): joined paws go up in a wave along the raft.
+- **Free Roam** 🌊 appears while the family is in a raft, nap or cheer. Tap it to let everyone swim off and do their own thing again (a nap wakes up). Modes also end on their own after a while.
+- **🎵 / 🔈** (top left) toggle the background music and all sound. The music is a slow, generative lullaby made in the browser, and it is softer and slower in the Moonlit Lagoon.
 - **📔 Journal**: meet the family, switch places, see unlocks and the family moments you've seen.
 
 Nothing can be lost and nothing goes down if you walk away. Happiness settles gently, and hearts only go up.
@@ -68,7 +70,7 @@ Plain JavaScript files that share one global namespace (`OR`), loaded in order b
 | `js/world.js` | Sky & water rendering, the three places, particles, fish, bubbles, dive spots, kelp, log, buoy, lanterns |
 | `js/events.js` | The rare family moments, each a small generator "script" |
 | `js/progress.js` | Unlock list, collections, moments album, saving |
-| `js/audio.js` | Tiny synthesized sounds (Web Audio, no files): water, splashes, bubbles, otter chirps |
+| `js/audio.js` | Synthesized sound (Web Audio, no files): water, splashes, bubbles, otter chirps and the generative lullaby |
 | `js/ui.js` | Counters, buttons, toasts, the Journal |
 | `js/game.js` | Main loop, input, raft modes, paw-holding links, event scheduling, speech bubbles |
 

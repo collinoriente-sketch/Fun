@@ -351,6 +351,10 @@
     text(x, y, str) {
       this.high.push({ k: 'text', x, y, str, t: 0, life: 1.6 });
     }
+    // a collected item bobs up out of the water and fades
+    pickup(type, x, y, r) {
+      this.high.push({ k: 'item', type, x, y, r, t: 0, life: 1.1 });
+    }
     bubble(x, y, r) {
       this.high.push({ k: 'bub', x, y, r: Math.max(2, r), t: 0, life: 0.9, vx: U.rand(-6, 6) });
     }
@@ -378,6 +382,8 @@
           p.y += p.vy * dt;
         } else if (p.k === 'text') {
           p.y -= dt * 26;
+        } else if (p.k === 'item') {
+          p.y -= dt * 60 * (1 - p.t / p.life);
         } else if (p.k === 'bub') {
           p.y -= dt * 10;
           p.x += p.vx * dt;
@@ -442,6 +448,12 @@
           ctx.strokeText(p.str, p.x, p.y);
           ctx.fillStyle = '#fff';
           ctx.fillText(p.str, p.x, p.y);
+          ctx.restore();
+        } else if (p.k === 'item') {
+          ctx.save();
+          ctx.globalAlpha = fade;
+          const s = U.easeOutBack(Math.min(1, p.t / 0.35));
+          A.drawItem(ctx, p.type, p.x, p.y, p.r * s, p.t, 3);
           ctx.restore();
         } else if (p.k === 'bub') {
           ctx.save();
@@ -573,7 +585,7 @@
       this.y = y != null ? y : U.rand(G.top + G.S * 0.5, G.bottom - G.S * 0.3);
       this.seed = U.rand(10);
       this.t = 0;
-      this.life = U.rand(50, 80);
+      this.life = U.rand(90, 140);
     }
     update(dt) {
       this.t += dt;
@@ -588,8 +600,16 @@
       const wob = Math.sin(t * 1.5 + this.seed) * r * 0.08;
       A.drawItem(ctx, this.type, this.x + wob, this.y + r * 0.8, r, t, this.seed);
       ctx.restore();
-      // a glint on the surface so it's easy to spot and tap
+      // a glint and a soft pulsing ring on the surface so it's easy to spot and tap
       const tw = Math.max(0, Math.sin(t * 2.2 + this.seed * 3));
+      const pk = (t * 0.6 + this.seed) % 1;
+      ctx.save();
+      ctx.globalAlpha = fade * (1 - pk) * 0.55;
+      A.ellipse(ctx, this.x, this.y + r * 0.4, r * (1.2 + pk * 1.6), r * (0.5 + pk * 0.7));
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = this.type === 'pearl' ? '#fff3b0' : '#ffffff';
+      ctx.stroke();
+      ctx.restore();
       ctx.save();
       ctx.globalAlpha = fade * (0.35 + tw * 0.65);
       A.drawSparkle(ctx, this.x + r * 0.6, this.y - r * 0.3, r * (0.45 + tw * 0.35), this.type === 'pearl' ? '#fff3b0' : '#ffffff', t);

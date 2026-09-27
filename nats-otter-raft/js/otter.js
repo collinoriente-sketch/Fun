@@ -153,6 +153,7 @@
       if (g.progress.has('twirl')) w.twirl = 0.35;
       if (g.decor.log && g.progress.has('log')) w.sunbathe = this.id === 'gussy' ? 0.8 : 0.4;
       if (g.happiness > 80) w.play = (w.play || 0) + 0.5;
+      if (g.time < (g.awakeUntil || 0)) w.nap = 0; // just woken up by Free Roam
       if (this.baby && g.otters.filter((o) => o.baby && o !== this && !o.scripted).length === 0) w.play = 0;
       const pick = U.weighted(w) || 'float';
       this.do(pick);

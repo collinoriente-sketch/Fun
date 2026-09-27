@@ -51,6 +51,22 @@ body {
   pointer-events: none;
 }
 .hud > * { pointer-events: auto; }
+.left { display: flex; align-items: center; gap: 6px; }
+.left .icon {
+  font-size: 17px;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--cream);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.left .icon.off { opacity: 0.55; text-decoration: line-through; }
 .brand {
   display: flex;
   align-items: center;
@@ -184,6 +200,9 @@ body {
 .controls button:active { transform: translateY(1px) scale(0.97); }
 .controls button.primary { background: var(--coral); color: #fff; box-shadow: var(--shadow), inset 0 -3px 0 rgba(150, 30, 60, 0.25); }
 .controls button.icon { padding: 9px 12px 8px; font-size: 18px; position: relative; }
+.controls button.active { background: #ffe3ea; box-shadow: var(--shadow), inset 0 0 0 3px var(--coral); }
+.controls button.primary.active { background: var(--coral); box-shadow: var(--shadow), inset 0 0 0 3px #fff; }
+.controls button.free { background: var(--sea); color: #fff; animation: pop 0.3s cubic-bezier(0.2, 1.3, 0.4, 1); }
 #journalDot {
   position: absolute;
   top: 4px;
@@ -299,7 +318,12 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
   /* secondary actions become round icon buttons on phones */
   #btnNap .lbl, #btnCheer .lbl { display: none; }
   #btnNap, #btnCheer { padding: 8px 10px 7px; font-size: 18px; }
+  .left .icon { width: 34px; height: 34px; font-size: 15px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .brand-otter, .stat.bump, .toast, .sheet { animation: none; }
+}
+@media (max-width: 480px) {
+  /* when Free Roam shows up, Call the Family shrinks to its icon so everything fits on one row */
+  .controls:has(#btnFree:not([hidden])) #btnCall .lbl { display: none; }
 }

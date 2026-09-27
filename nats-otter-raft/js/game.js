@@ -11,7 +11,8 @@
       this.canvas = canvas;
       this.ctx = canvas.getContext('2d');
       this.progress = new OR.Progress();
-      this.audio = new OR.Audio(this.progress.state.muted);
+      this.audio = new OR.Audio(this.progress.state.muted, this.progress.state.music);
+      this.audio.setMood(this.progress.state.area);
       this.happiness = U.clamp(this.progress.state.happiness || 70, 40, 100);
       this.time = 0;
       this.pointer = { x: -999, y: -999, inside: false, moved: -99, down: null };
@@ -179,7 +180,7 @@
       }
       if (s.item <= 0) {
         s.item = U.rand(9, 16);
-        if (this.items.length < 3) this.spawnItem();
+        if (this.items.length < 4) this.spawnItem();
       }
       if (s.lantern <= 0) {
         s.lantern = U.rand(12, 26);
@@ -251,6 +252,41 @@
       this.checkUnlocks();
     }
 
+    itemAt(x, y, radius) {
+      let best = null, bd = radius;
+      for (const it of this.items) {
+        const d = U.dist(x, y, it.x, it.y + this.G.S * 0.1);
+        if (d < bd) { bd = d; best = it; }
+      }
+      return best;
+    }
+
+    // One tap on a sparkle: it's yours right away, and a nearby otter gets excited about it.
+    pickUp(it) {
+      it.dead = true;
+      this.items = this.items.filter((i) => i !== it);
+      const G = this.G;
+      this.progress.add(ITEM_KEY[it.type], 1);
+      this.fx.pickup(it.type, it.x, it.y, G.S * 0.3);
+      this.fx.text(it.x, it.y - G.S * 0.9, `+1 ${ITEM_ICON[it.type]}`);
+      this.fx.splash(it.x, it.y, G.S * 0.5);
+      this.fx.sparkle(it.x, it.y - G.S * 0.3, 5, G.S * 0.18);
+      this.audio.pop();
+      this.audio.collect();
+      this.addHearts(1);
+      let near = null, nd = G.S * 5;
+      for (const o of this.otters) {
+        const d = U.dist(o.x, o.y, it.x, it.y);
+        if (d < nd && !o.sleeping && o.q.sub < 0.3) { nd = d; near = o; }
+      }
+      if (near) {
+        const lines = { rock: ['🪨', 'nice rock!', 'ooh!'], shell: ['🐚', 'pretty!', 'ooh!'], pearl: ['✨', 'shiny!!', 'wow!'] }[it.type];
+        near.say(near.id === 'collin' && it.type === 'rock' ? 'Good rock!' : U.pick(lines), 1.6);
+        near.lookAt(it.x, it.y);
+      }
+      this.checkUnlocks();
+    }
+
     dispatchFetch(item) {
       let best = null, bs = Infinity;
       for (const o of this.otters) {
@@ -303,9 +339,19 @@
 
     setArea(id) {
       this.progress.state.area = id;
+      this.audio.setMood(id);
       this.progress.dirty = true;
       this.scene.rebuild();
       this.ui.toast(`Welcome to ${OR.AREAS[id].name}`, id === 'lagoon' ? '🌙' : id === 'sunset' ? '🌅' : '🌊');
+    }
+
+    toggleMusic() {
+      const on = !this.audio.musicOn || this.audio.muted;
+      if (on && this.audio.muted) this.toggleMute();
+      this.audio.setMusic(on);
+      this.progress.state.music = on;
+      this.progress.save();
+      this.ui.toast(on ? 'Music on' : 'Music off', on ? '🎵' : '🔕');
     }
 
     toggleMute() {
@@ -353,6 +399,7 @@
       }
       this.mode = { type, until: this.time + dur, slots: {}, cx, cy };
       this.computeSlots();
+      if (this.ui) this.ui.refresh();
       for (const o of this.otters) o.links = [];
       for (const o of this.otters) {
         if (o.scripted) continue;
@@ -385,15 +432,31 @@
     }
 
     updateMode(dt) {
+      if (this.mode && this.time > this.mode.until) this.endMode(false);
+    }
+
+    // Let everyone go back to doing their own thing.
+    endMode(wake) {
       const m = this.mode;
       if (!m) return;
-      if (this.time > m.until) {
-        this.mode = null;
-        for (const o of this.otters) {
-          if (o.actionName !== 'slot') continue;
-          o.next = m.type === 'nap' ? ['nap', { dur: U.rand(2, 12) }] : ['float', { dur: U.rand(2, 9) }];
-        }
+      this.mode = null;
+      for (const o of this.otters) {
+        if (o.actionName !== 'slot') continue;
+        if (m.type === 'nap' && !wake) o.next = ['nap', { dur: U.rand(2, 12) }];
+        else if (m.type === 'nap') o.next = U.chance(0.6) ? ['yawn'] : ['shake'];
+        else o.next = ['float', { dur: U.rand(0.5, 4) }];
       }
+      this.ui.refresh();
+    }
+
+    freeRoam() {
+      this.audio.init();
+      const wasNap = this.mode && this.mode.type === 'nap';
+      this.endEvent();
+      this.endMode(true);
+      this.awakeUntil = this.time + 25;
+      this.byId.winston.say(wasNap ? 'I\'m awake!' : 'wheee!', 1.8);
+      this.ui.toast(wasNap ? 'Rise and shine! Free roam.' : 'Free roam! Off they go.', '🌊');
     }
 
     // ------------------------------------------------------------ paw holding
@@ -645,8 +708,13 @@
         if (!d) return;
         if (d.mode === 'drag') d.o.do('float', { dur: 1.2 });
         else if (d.mode === 'rub') d.o.do('float', { dur: 3, happy: true });
-        else if (d.o) this.tapOtter(d.o);
-        else this.tapWater(d.x, d.y);
+        else {
+          // a sparkle right under the finger wins over the otter floating next to it
+          const it = this.itemAt(d.x, d.y, d.o ? this.G.S * 0.45 : this.G.S * 1.0);
+          if (it) this.pickUp(it);
+          else if (d.o) this.tapOtter(d.o);
+          else this.tapWater(d.x, d.y);
+        }
       };
       c.addEventListener('pointerup', up);
       c.addEventListener('pointercancel', up);
@@ -685,19 +753,14 @@
     tapWater(x, y) {
       const G = this.G;
       for (const b of this.bubbles) {
-        if (U.dist(x, y, b.x, b.y) < b.r * 2 + 14) {
+        if (U.dist(x, y, b.x, b.y) < b.r * 2.5 + 22) {
           this.popBubble(b);
           if (U.chance(0.35)) this.addHearts(1, x, y);
           return;
         }
       }
-      for (const it of this.items) {
-        if (U.dist(x, y, it.x, it.y) < G.S * 0.7) {
-          this.fx.ripple(it.x, it.y, G.S * 0.8, true);
-          this.dispatchFetch(it);
-          return;
-        }
-      }
+      const it = this.itemAt(x, y, G.S * 1.0);
+      if (it) return this.pickUp(it);
       this.fx.ripple(x, y, G.S * 0.9, true);
       this.fx.ripple(x, y, G.S * 0.5);
       this.audio.bubble();

@@ -18,7 +18,7 @@
         hearts: $('nHearts'), rocks: $('nRocks'), shells: $('nShells'), pearls: $('nPearls'),
         happy: $('happyFill'), next: $('nextUnlock'), toasts: $('toasts'), hint: $('hint'),
         journal: $('journal'), jBody: $('journalBody'), dot: $('journalDot'),
-        call: $('btnCall'), nap: $('btnNap'), cheer: $('btnCheer'), jBtn: $('btnJournal'), mute: $('btnMute'), close: $('btnClose'),
+        call: $('btnCall'), nap: $('btnNap'), cheer: $('btnCheer'), jBtn: $('btnJournal'), mute: $('btnMute'), music: $('btnMusic'), free: $('btnFree'), close: $('btnClose'),
       };
       this.shown = {};
       const e = this.el;
@@ -34,6 +34,11 @@
           game.setArea(area.dataset.area);
           this.renderJournal();
         }
+      });
+      e.free.addEventListener('click', () => game.freeRoam());
+      e.music.addEventListener('click', () => {
+        game.toggleMusic();
+        this.refresh();
       });
       e.mute.addEventListener('click', () => {
         game.toggleMute();
@@ -51,6 +56,16 @@
       e.mute.textContent = g.audio.muted ? '🔇' : '🔈';
       e.mute.setAttribute('aria-label', g.audio.muted ? 'Turn sound on' : 'Turn sound off');
       e.mute.title = e.mute.getAttribute('aria-label');
+      const musicOn = g.audio.musicOn && !g.audio.muted;
+      e.music.classList.toggle('off', !musicOn);
+      e.music.setAttribute('aria-label', musicOn ? 'Turn music off' : 'Turn music on');
+      e.music.title = e.music.getAttribute('aria-label');
+      // show which mode is running, and how to leave it
+      const mode = g.mode && g.mode.type;
+      e.free.hidden = !mode;
+      e.call.classList.toggle('active', mode === 'raft');
+      e.nap.classList.toggle('active', mode === 'nap');
+      e.cheer.classList.toggle('active', mode === 'cheer');
     }
 
     update() {
