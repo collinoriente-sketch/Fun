@@ -50,7 +50,7 @@
   OR.BOSSES = [
     // ======================================================================= 1. DAWSON
     {
-      id: 'dawson', name: 'Dawson', title: 'The Tactical Snake', reward: 'sneakyShell', color: '#6aa84f',
+      id: 'dawson', name: 'Dawsimaru', title: 'The Tactical Snake', reward: 'sneakyShell', color: '#6aa84f',
       hpMult: 1, atkMult: 1, scale: 1.05, attackEvery: 2.6, radius: 1.0, hitY: 0.9, mouth: [-0.55, -1.15],
       lines: {
         intro: 'Operation Slither is a go.',
@@ -267,7 +267,7 @@
 
     // ======================================================================= 2. BILLY
     {
-      id: 'billy', name: 'Billy', title: 'The Brooding Dolphin', reward: 'shadowFin', color: '#5b6f93',
+      id: 'billy', name: 'Blieopluerodon', title: 'The Brooding Dolphin', reward: 'shadowFin', color: '#5b6f93',
       hpMult: 1, atkMult: 1, scale: 1.05, attackEvery: 2.4, radius: 1.05, hitY: 0.35, mouth: [-1.1, -0.25],
       homeY: (G) => G.surface + G.S * 0.15,
       lines: {
@@ -463,7 +463,7 @@
 
     // ======================================================================= 3. MATT
     {
-      id: 'matt', name: 'Matt', title: 'The Ranked Turtle', reward: 'tankShell', color: '#4f8a3f',
+      id: 'matt', name: 'Turmattle', title: 'The Ranked Turtle', reward: 'tankShell', color: '#4f8a3f',
       hpMult: 1.1, atkMult: 1, scale: 1.3, attackEvery: 2.8, radius: 1.1, hitY: 0.6, mouth: [-1.1, -0.6],
       lines: {
         intro: 'Bro. I\'m in a RANKED MATCH.',
@@ -666,7 +666,7 @@
 
     // ======================================================================= 4. MIKE
     {
-      id: 'mike', name: 'Mike', title: 'The Construction Colossus', reward: 'reinforcedShell', color: '#ff8c1a',
+      id: 'mike', name: 'Mikolossus', title: 'The Construction Colossus', reward: 'reinforcedShell', color: '#ff8c1a',
       hpMult: 1.1, atkMult: 1.05, scale: 1.1, attackEvery: 2.3, radius: 1.0, hitY: 1.0, mouth: [-0.6, -1.2],
       lines: {
         intro: 'ON THE JOB! Nobody passes this site!',
@@ -899,7 +899,7 @@
 
     // ======================================================================= 5. TOMMY
     {
-      id: 'tommy', name: 'Tommy', title: 'The Mad Dragonfly', reward: 'mutationCore', color: '#3fc1b0',
+      id: 'tommy', name: 'Thomasopoid', title: 'The Mad Dragonfly', reward: 'mutationCore', color: '#3fc1b0',
       hpMult: 1.15, atkMult: 1.1, scale: 1.1, attackEvery: 2.3, radius: 1.0, hitY: 0.1, mouth: [-0.7, -0.4],
       homeY: (G) => G.surface - G.S * 1.9,
       lines: {
@@ -1132,7 +1132,7 @@
 
     // ======================================================================= 6. COLLIN T
     {
-      id: 'collint', name: 'Collin T', title: 'The Gains Giraffe', reward: 'muscleFluff', color: '#f2c14e',
+      id: 'collint', name: 'Treetees', title: 'The Gains Giraffe', reward: 'muscleFluff', color: '#f2c14e',
       hpMult: 1.2, atkMult: 1.15, scale: 0.9, attackEvery: 2.3, radius: 1.1, hitY: 0.9, mouth: [-1.0, -2.6],
       lines: {
         intro: 'Do you even LIFT, little otters?',
@@ -1189,7 +1189,7 @@
           weight: 2.5,
           run(b, adv) {
             b.busy = 1.8;
-            const front = adv.squad.otters[3];
+            const sq = adv.squad.otters, front = sq[Math.max(0, sq.length - 2)];
             onOtter(b, front, {
               warn: 1.0, r: adv.G.S * 1.5, dmg: b.atk * 1.5, label: 'NECK SLAM',
               onTrigger: (a2) => { a2.shake(12); a2.audio.boom && a2.audio.boom(0.7); },
@@ -1238,7 +1238,7 @@
             b.say('CARDIO!', 1);
             const home = b.x;
             adv.tween(0.5, (k) => (b.x = U.lerp(home, adv.squad.front().x + adv.G.S, k)), () => {
-              for (const o of adv.squad.otters.slice(2)) adv.hurtSquad(b.atk * 0.5, o);
+              for (const o of adv.squad.otters.slice(-3)) adv.hurtSquad(b.atk * 0.5, o);
               adv.shake(9);
               adv.tween(0.8, (k) => (b.x = U.lerp(adv.squad.front().x + adv.G.S, home, k)));
             });
@@ -1358,7 +1358,7 @@
 
     // ======================================================================= 7. TSIMBERG
     {
-      id: 'tsimberg', name: 'Tsimberg', title: 'Archmage of SPF', reward: 'sunCore', color: '#6c3fb5',
+      id: 'tsimberg', name: 'Tsimboig', title: 'Archmage of SPF', reward: 'sunCore', color: '#6c3fb5',
       hpMult: 1.35, atkMult: 1.25, scale: 1.0, attackEvery: 2.0, radius: 1.0, hitY: 1.2, mouth: [-0.7, -1.7],
       lines: {
         intro: 'Behold! SPF ONE MILLION!',

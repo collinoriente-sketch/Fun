@@ -104,7 +104,7 @@
     {
       id: 'kelpCyclone', icon: '🟢', name: 'Kelp Cyclone',
       use(adv) {
-        const o = adv.squad.otters[3];
+        const o = adv.squad.front();
         o.say('KELP… CYCLONE… SPHERE!!', 1.6);
         adv.audio.charge && adv.audio.charge(1);
         const tgt = adv.target();

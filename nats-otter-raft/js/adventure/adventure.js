@@ -20,6 +20,9 @@
     kills: 0,
     bestCombo: 0,
     autoUpgrade: true,
+    family: ['collin'], // who has been found so far (story progress)
+    introSeen: false,
+    endingSeen: false,
   });
 
   class Adventure {
@@ -29,6 +32,13 @@
       const saved = game.progress.state.adv;
       this.st = Object.assign(DEFAULT_STATE(), saved || {});
       this.st.res = Object.assign(DEFAULT_STATE().res, this.st.res);
+      if (saved && !saved.family) {
+        // saves from before the story: count the bosses already beaten as rescues
+        const found = Math.min(OR.RESCUE_ORDER.length, saved.defeated || 0);
+        this.st.family = ['collin'].concat(OR.RESCUE_ORDER.slice(0, found));
+        this.st.introSeen = found > 0;
+        this.st.endingSeen = (saved.defeated || 0) >= OR.BOSSES.length;
+      }
       game.progress.state.adv = this.st;
       this.time = 0;
       this.mode = 'explore';
@@ -37,6 +47,7 @@
       this.proj = new OR.Projectiles();
       this.scroller = new OR.Scroller(this);
       this.squad = new OR.Squad(this);
+      this.story = new OR.Story(this);
       this.pickups = [];
       this.enemies = [];
       this.hazards = [];
@@ -147,6 +158,7 @@
       this.ui.show(true);
       this.last = null;
       if (this.mode === 'boss' && this.boss) this.audio.startGroove && this.audio.startGroove(132);
+      if (!this.st.introSeen && !this.story.scene && this.mode === 'explore' && !this.st.defeated) this.story.startIntro();
     }
     exit() {
       this.active = false;
@@ -183,6 +195,7 @@
         }
       }
       this.tweens = this.tweens.filter((t) => !t.finished);
+      this.story.update(dt);
       for (const k in this.effects) this.effects[k] = Math.max(0, this.effects[k] - dt);
       for (const k in this.cd) this.cd[k] = Math.max(0, this.cd[k] - dt);
       for (const ab of OR.ABILITIES) if (ab.tick && this.effectActive(ab.id)) ab.tick(this, dt);
@@ -204,7 +217,7 @@
 
       // scrolling
       const exploring = this.mode === 'explore';
-      const targetSpeed = exploring ? B.scrollSpeed : this.mode === 'victory' ? B.scrollSpeed * 0.5 : 0;
+      const targetSpeed = exploring ? B.scrollSpeed : this.mode === 'victory' ? B.scrollSpeed * (this.story.scene === 'rescue' ? 0.15 : 0.5) : this.mode === 'ending' && this.story.t < 5 ? B.scrollSpeed * 0.5 : 0;
       this.speed = U.damp(this.speed || 0, targetSpeed, 1.5, dt);
       this.st.dist += this.speed * dt;
       const scrollPx = this.speed * G.S;
@@ -223,7 +236,12 @@
 
       if (exploring) this.updateExplore(dt, scrollPx);
       else if (this.mode === 'bossIntro' && this.modeT > 2.3) this.spawnBoss();
-      else if (this.mode === 'victory' && this.modeT > 4.2) this.setMode('explore');
+      else if (this.mode === 'victory' && this.modeT > 4.2 && this.story.scene !== 'rescue') {
+        if (this.pendingEnding) {
+          this.pendingEnding = false;
+          this.story.startEnding();
+        } else this.setMode('explore');
+      }
 
       for (const p of this.pickups) p.update(dt, scrollPx);
       this.pickups = this.pickups.filter((p) => !p.dead);
@@ -294,12 +312,12 @@
       s.enemy -= dt;
       if (s.pickup <= 0) {
         s.pickup = B.pickupEvery * U.rand(0.6, 1.4);
-        if (this.pickups.length < B.maxPickups) {
+        if (this.pickups.filter((p) => !p.flying).length < B.maxPickups) {
           const w = {};
           for (const k in B.pickups) w[k] = B.pickups[k].weight;
           const type = U.weighted(w);
           const zone = U.pick(['surface', 'surface', 'under', 'air']);
-          const y = zone === 'surface' ? G.surface - G.S * 0.35 : zone === 'under' ? G.surface + G.S * U.rand(0.6, 1.5) : G.surface - G.S * U.rand(1.1, 1.6);
+          const y = zone === 'surface' ? G.surface - G.S * 0.35 : zone === 'under' ? G.surface + G.S * U.rand(0.5, 1.0) : G.surface - G.S * U.rand(1.0, 1.4);
           this.pickups.push(new OR.Pickup(this, type, G.W + G.S, y));
         }
       }
@@ -378,7 +396,7 @@
 
     // ------------------------------------------------------------ combat
     autoAttack(dt) {
-      if (this.squad.ko || this.finale > 0 || this.mode === 'bossIntro' || this.mode === 'victory') return;
+      if (this.squad.ko || this.finale > 0 || this.mode === 'bossIntro' || this.mode === 'victory' || this.mode === 'intro' || this.mode === 'ending') return;
       const B = OR.BAL, G = this.G;
       const boss = this.boss && this.boss.state === 'fight' ? this.boss : null;
       for (const o of this.squad.otters) {
@@ -396,7 +414,7 @@
           continue;
         }
         o.attackT = B.autoAttackEvery * U.rand(0.85, 1.15);
-        this.throwShell(o, tgt, this.stats.autoDmg, 'auto', false);
+        this.throwShell(o, tgt, this.stats.autoDmg * (1 + B.soloBonus * (5 - this.squad.otters.length)), 'auto', false);
       }
     }
 
@@ -612,8 +630,15 @@
       this.audio.stopGroove && this.audio.stopGroove();
       this.audio.fanfare && this.audio.fanfare();
       this.refreshStats();
-      this.ui.showReward(b, reward, got);
       for (const o of this.squad.otters) o.say(U.pick(['WE DID IT!', 'hehe!', '💕', 'too easy!', 'family power!']), 2.4);
+      // story: each early boss was guarding a missing family member
+      this.lastBoss = { b, reward, got };
+      const found = OR.RESCUE_ORDER.find((id) => !st.family.includes(id));
+      if (found) {
+        st.family.push(found); // saved right away; the reunion scene is just the show
+        this.story.startRescue(found);
+      } else this.ui.showReward(b, reward, got);
+      if (b.def.id === 'tsimberg' && !st.endingSeen) this.pendingEnding = true;
       this.save();
     }
 
@@ -741,6 +766,7 @@
     pointerDown(x, y) {
       const G = this.G;
       this.lastInput = this.time;
+      if (this.mode === 'intro' || this.mode === 'ending') return;
       this.game.audio.init();
       if (this.mode === 'boss') return this.tapAttack(x, y);
       // explore: grab a pickup, bonk an enemy, or just splash
@@ -777,6 +803,7 @@
       ctx.save();
       if (this.shakeAmt > 0.3) ctx.translate(U.rand(-1, 1) * this.shakeAmt, U.rand(-1, 1) * this.shakeAmt);
       this.scroller.draw(ctx, t);
+      this.story.drawWeather(ctx, t);
       // things under the surface
       for (const e of this.enemies) if (e.y > G.surface) e.draw(ctx, t);
       for (const p of this.pickups) if (p.y > G.surface && !p.flying) p.draw(ctx, t);
@@ -801,6 +828,7 @@
         ctx.globalAlpha = 1;
       }
       this.drawCombo(ctx);
+      this.story.drawCaption(ctx);
       this.drawBanner(ctx);
       if (this.boss && this.boss.state === 'intro') this.drawNameCard(ctx, this.boss);
     }

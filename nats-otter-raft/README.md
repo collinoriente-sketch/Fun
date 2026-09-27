@@ -15,6 +15,15 @@ chase fish and hold paws. Now and then they drift together into a raft.
 
 ## ⚔️ Adventure mode (side-scrolling boss rush)
 
+**The story:** a storm has just passed. Collin wakes up alone, floating on his back. The storm scattered his family
+across the ocean, and Collin has to find them. He starts on his own, and each of the first four bosses is guarding a missing
+family member: beat **Dawsimaru** to rescue Natalie, **Blieopluerodon** for Winston, **Turmattle** for Gussy and
+**Mikolossus** for Finny. Each rescue has a little reunion (they spot each other, swim together, hug), and the rescued otter
+joins for good. After the whole family beats **Tsimboig** together, they swim home to the kelp. From there you can rest
+at the raft or keep adventuring as the bosses loop, stronger each time. Otters that haven't been rescued yet don't exist in
+Adventure at all, so early fights are lighter to run too.
+
+
 Tap **⚔️ Adventure** in the raft (or **🏝️ Raft** to go back). The game remembers which mode you were in.
 
 - **Explore:** the family swims through Open Ocean, Sunny Beach, Kelp Forest, Coral Reef, Sea Cave and a Shipwreck.
@@ -24,10 +33,10 @@ Tap **⚔️ Adventure** in the raft (or **🏝️ Raft** to go back). The game 
   armor, metal helmets, giant shell shields, auras, energy tails and halos. The **Scrap Refinery** turns metal scraps
   into 🔩 refined metal over time. **Auto-buy** (on by default) spends for you while you're away.
 - **Bosses:** the boss meter fills as you travel, then **BOSS INCOMING!** Only one boss at a time, in order:
-  **Dawson** (tactical snake: burrows, tap when he pops up), **Billy** (emo dolphin: clones, find the sparkly tear),
-  **Matt** (ranked turtle: hides in his shell, hit him when it opens), **Mike** (construction dwarf: smash his
-  barricades), **Tommy** (mad-scientist dragonfly: mutates into giant/tiny/glowing forms), **Collin T** (gym giraffe:
-  tap fast to interrupt his flex) and **Tsimberg** (sunscreen wizard: hit 🧴 Sunscreen before his giant sun lands).
+  **Dawsimaru** (tactical snake: burrows, tap when he pops up), **Blieopluerodon** (emo dolphin: clones, find the sparkly tear),
+  **Turmattle** (ranked turtle: hides in his shell, hit him when it opens), **Mikolossus** (construction dwarf: smash his
+  barricades), **Thomasopoid** (mad-scientist dragonfly: mutates into giant/tiny/glowing forms), **Treetees** (gym giraffe:
+  tap fast to interrupt his flex) and **Tsimboig** (sunscreen wizard: hit 🧴 Sunscreen before his giant sun lands).
   Then the rotation loops forever, harder each time, with random modifiers (Armored, Swift, Giant, Regenerating…).
 - **Boss fights:** hit **TAP ATTACK** (or tap the boss or Space). Taps build a combo up to +100%, and you don't need to mash.
   Tap incoming projectiles to swat them. Abilities: 💣 Kelp Bomb, 🌀 Shell Slash, 👥 Shadow Otters,
@@ -108,6 +117,7 @@ Plain JavaScript files that share one global namespace (`OR`), loaded in order b
 | `js/adventure/scroller.js` | Side-scrolling biomes and scenery |
 | `js/adventure/entities.js` | Pickups and small enemies |
 | `js/adventure/squad.js` | The otter family in Adventure mode (pose, attacks, knockback, dizzy) |
+| `js/adventure/story.js` | The storm opening, the rescue reunions and the ending (rescue order is `OR.RESCUE_ORDER` in squad.js) |
 | `js/adventure/pool.js` | Pooled particles and projectiles |
 | `js/adventure/advui.js`, `adventure.js` | HUD, and the explore/boss/victory loop |
 | `js/adventure/assets.js` + `assets/` | Optional custom images/sounds with automatic fallback (see `assets/README.md`) |

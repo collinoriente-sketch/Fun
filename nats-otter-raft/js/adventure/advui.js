@@ -16,7 +16,7 @@
         bossBar: $('advBossBar'), bbName: $('bbName'), bbTitle: $('bbTitle'), bbMods: $('bbMods'), bbFill: $('bbFill'), bbGhost: $('bbGhost'), bbText: $('bbText'),
         abil: $('advAbilities'), upBtn: $('advUpgrade'), upDot: $('advUpDot'), tap: $('advTap'), ult: $('advUlt'), ultFill: $('advUltFill'), ultLbl: $('advUltLbl'),
         sheet: $('advSheet'), sheetBody: $('advSheetBody'), sheetClose: $('advSheetClose'), card: $('advCard'),
-        home: $('advHome'), music: $('advMusic'), mute: $('advMute'),
+        home: $('advHome'), music: $('advMusic'), mute: $('advMute'), skip: $('advSkip'),
       };
       const e = this.el;
       // resource chips
@@ -55,7 +55,14 @@
           if (adv.buyUpgrade(buy.dataset.buy)) this.renderSheet();
         }
       });
-      e.card.addEventListener('click', () => (e.card.hidden = true));
+      e.card.addEventListener('click', (ev) => {
+        const choice = ev.target.closest('[data-choice]');
+        if (choice) {
+          e.card.hidden = true;
+          adv.story.finishEnding(choice.dataset.choice);
+        } else if (!e.card.classList.contains('choice')) e.card.hidden = true;
+      });
+      e.skip.addEventListener('click', () => adv.story.endIntro());
       e.sheet.addEventListener('change', (ev) => {
         if (ev.target.id === 'advAuto') {
           adv.st.autoUpgrade = ev.target.checked;
@@ -102,6 +109,8 @@
 
     modeChanged() {
       const m = this.adv.mode, boss = m === 'boss';
+      this.root.classList.toggle('cinematic', m === 'intro' || m === 'ending');
+      this.el.skip.hidden = m !== 'intro';
       this.root.classList.toggle('bossmode', boss || m === 'bossIntro');
       this.el.tap.hidden = !boss;
       this.el.ult.hidden = !boss;
@@ -142,7 +151,11 @@
       const next = adv.nextBossDef();
       const k = U.clamp(st.meter / adv.meterNeed(), 0, 1);
       e.meterFill.style.width = (adv.mode === 'explore' ? k * 100 : 100) + '%';
-      const lbl = adv.mode === 'explore' ? `Next boss: ${next.name}` : adv.mode === 'victory' ? 'Victory!' : `Boss: ${adv.boss ? adv.boss.name : next.name}`;
+      const missing = OR.RESCUE_ORDER.find((id) => !st.family.includes(id));
+      const missingName = missing && OR.FAMILY.find((d) => d.id === missing).name;
+      const lbl = adv.mode === 'explore'
+        ? missing ? `${next.name} is guarding ${missingName}` : `Next boss: ${next.name}`
+        : adv.mode === 'victory' ? 'Victory!' : `Boss: ${adv.boss ? adv.boss.name : next.name}`;
       if (this.shown.lbl !== lbl) {
         this.shown.lbl = lbl;
         e.meterLbl.textContent = lbl;
@@ -228,8 +241,9 @@
         <p class="foot">Tip: Space taps, 1–8 use abilities, F fires the Supernova, U opens this.</p>`;
     }
 
-    showReward(b, reward, got) {
+    showReward(b, reward, got, joined) {
       const e = this.el.card;
+      e.classList.remove('choice');
       const loot = Object.keys(got).map((k) => `<span>${OR.RES_ICON[k]} +${fmt(got[k])}</span>`).join('');
       e.innerHTML = `<div class="rc-inner">
         <small>${esc(b.name)} defeated!</small>
@@ -237,12 +251,30 @@
         <b>${esc(reward.name)}</b>
         <p>${esc(reward.desc)}</p>
         <div class="rc-loot">${loot}</div>
+        ${joined ? `<div class="rc-joined">🦦 ${esc(joined)} is back with the family! (${this.adv.st.family.length}/5)</div>` : ''}
         <em>Tap to continue</em></div>`;
       e.hidden = false;
       clearTimeout(this.cardT);
       this.cardT = setTimeout(() => (e.hidden = true), 6000);
     }
   }
+
+  // The ending's choice card: go home to the raft, or keep adventuring.
+  AdvUI.prototype.showEndingChoice = function () {
+    const e = this.el.card;
+    clearTimeout(this.cardT);
+    e.classList.add('choice');
+    e.innerHTML = `<div class="rc-inner">
+      <small>The End… for now</small>
+      <div class="rc-icon">🦦💕</div>
+      <b>The family is together again</b>
+      <p>Collin found everyone. Where to now?</p>
+      <div class="rc-choices">
+        <button type="button" data-choice="raft">🏝️ Rest at the raft</button>
+        <button type="button" data-choice="adventure">⚔️ Keep adventuring</button>
+      </div></div>`;
+    e.hidden = false;
+  };
 
   OR.AdvUI = AdvUI;
 })(window.OR);

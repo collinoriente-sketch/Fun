@@ -34,6 +34,7 @@
 
     // Which biome sits at a given travel distance (in S units).
     biomeAt(dist) {
+      if (this.forceBiome) return OR.BIOMES.find((b) => b.id === this.forceBiome);
       const len = OR.BAL.biomeLength * OR.BAL.scrollSpeed;
       const i = Math.floor(Math.max(0, dist) / len);
       return OR.BIOMES[((i % OR.BIOMES.length) + OR.BIOMES.length) % OR.BIOMES.length];
@@ -407,14 +408,15 @@
       ctx.fillStyle = U.rgba(col, 0.5);
       ctx.beginPath();
       ctx.moveTo(0, G.H);
-      for (let x = 0; x <= G.W + 16; x += 16) ctx.lineTo(x, G.surface + Math.sin((x + px) * 0.03 + t * 2) * G.S * 0.05 + G.S * 0.05);
+      const amp = G.S * 0.05 * (1 + (this.adv.rough || 0) * 3);
+      for (let x = 0; x <= G.W + 16; x += 16) ctx.lineTo(x, G.surface + Math.sin((x + px) * 0.03 + t * 2) * amp + G.S * 0.05);
       ctx.lineTo(G.W, G.H);
       ctx.fill();
       ctx.strokeStyle = 'rgba(255,255,255,0.75)';
       ctx.lineWidth = 2;
       ctx.beginPath();
       for (let x = 0; x <= G.W + 16; x += 16) {
-        const y = G.surface + Math.sin((x + px) * 0.03 + t * 2) * G.S * 0.05 + G.S * 0.05;
+        const y = G.surface + Math.sin((x + px) * 0.03 + t * 2) * amp + G.S * 0.05;
         if (x === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       }

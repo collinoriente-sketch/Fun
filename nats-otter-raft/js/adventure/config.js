@@ -12,19 +12,19 @@
     biomeLength: 45, // seconds of travel per biome before the scenery changes
 
     // ---------------------------------------------------------------- pickups
-    pickupEvery: 0.75, // seconds between pickup spawns
-    maxPickups: 14,
+    pickupEvery: 1.1, // seconds between pickup spawns
+    maxPickups: 3, // on screen at once
     magnetRange: 1.4, // S; otters grab pickups this close (grows with Swift Paws)
     // weight = how often it spawns; amount = [min, max] granted
     pickups: {
-      shell: { weight: 10, amount: [1, 3] },
-      kelp: { weight: 7, amount: [1, 2] },
-      metal: { weight: 4, amount: [1, 2] },
-      pearl: { weight: 1.3, amount: [1, 1] },
-      fish: { weight: 2.5, amount: [1, 1] }, // food: heals and charges the ultimate
+      shell: { weight: 10, amount: [7, 13] },
+      kelp: { weight: 7, amount: [5, 8] },
+      metal: { weight: 4, amount: [4, 8] },
+      pearl: { weight: 1.3, amount: [3, 5] },
+      fish: { weight: 2.5, amount: [3, 5] }, // food: heals and charges the ultimate
       chest: { weight: 0.35, amount: [1, 1] }, // treasure chest: a bit of everything
     },
-    chestLoot: { shell: 12, kelp: 8, metal: 5, pearl: 2, treasure: 3 },
+    chestLoot: { shell: 50, kelp: 32, metal: 20, pearl: 8, treasure: 9 },
     lootGrowthPerBoss: 1.12, // every boss defeated multiplies pickup amounts
 
     // ---------------------------------------------------------------- small enemies
@@ -40,6 +40,7 @@
     squadRegen: 3, // hp per second while exploring
     autoAttackEvery: 1.25, // seconds between each otter's automatic shell toss
     autoDamage: 3,
+    soloBonus: 0.35, // while the family is still scattered, each missing otter adds +35% to the others' auto damage
     tapDamage: 6,
     critChance: 0.05,
     critMult: 2.2,
@@ -63,7 +64,7 @@
     bossProgressBase: 100, // "boss meter" points needed for the first boss
     bossProgressGrowth: 1.25,
     progressPerSecond: 1.1, // earned just by travelling
-    progressPerPickup: 0.8,
+    progressPerPickup: 2,
     progressPerKill: 3,
     bossHpBase: 3000,
     bossHpGrowth: 2.55, // per boss fought (keeps growing across loops)

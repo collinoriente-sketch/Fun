@@ -5,6 +5,8 @@
   const U = OR.util, A = OR.art, TAU = U.TAU;
   // left -> right; Collin swims at the front
   const ORDER = ['gussy', 'finny', 'winston', 'natalie', 'collin'];
+  // Story: the storm scattered the family. Collin rescues them in this order, one per boss.
+  OR.RESCUE_ORDER = ['natalie', 'winston', 'gussy', 'finny'];
 
   function pose() {
     return { bob: 0, lift: 0, rot: 0, sx: 1, sy: 1, eo: 1, happy: 0, yawn: 0, oh: 0, kick: 0, lean: 0, sub: 0, blush: 0.3, alx: -0.13, aly: 0.02, arx: 0.13, ary: 0.02, lookX: 0.6, lookY: 0, tilt: 0, kelp: 0, itemY: 0, wiggle: 0, costume: 0, step: 0 };
@@ -50,13 +52,34 @@
   class Squad {
     constructor(adv) {
       this.adv = adv;
-      this.otters = ORDER.map((id, i) => new AdvOtter(adv, OR.FAMILY.find((d) => d.id === id), i));
-      this.byId = Object.fromEntries(this.otters.map((o) => [o.id, o]));
+      // Only otters that have been rescued exist at all (nobody waits invisibly in the background).
+      this.otters = [];
+      this.byId = {};
+      for (const id of adv.st.family) this.addMember(id);
       this.hp = 1;
       this.ko = false;
       this.koT = 0;
       this.protectT = 0; // sunscreen
       this.hitFlash = 0;
+    }
+
+    // A rescued otter joins the party for good. Returns the new otter.
+    addMember(id, at) {
+      if (this.byId[id]) return this.byId[id];
+      const o = new AdvOtter(this.adv, OR.FAMILY.find((d) => d.id === id), 0);
+      this.byId[id] = o;
+      this.otters.push(o);
+      this.otters.sort((a, b) => ORDER.indexOf(a.id) - ORDER.indexOf(b.id));
+      this.otters.forEach((m, i) => (m.i = i));
+      if (this.adv.st.up) o.gear = OR.gearFor(this.adv.st);
+      if (this.adv.G) this.layout();
+      if (at) {
+        o.x = at.x;
+        o.y = o.by = at.y;
+        o.placed = true;
+      }
+      if (this.adv.st.up) this.applyGear(this.adv.st);
+      return o;
     }
 
     front() {
@@ -73,11 +96,12 @@
     layout() {
       const G = this.adv.G;
       let x = G.W * (G.portrait ? 0.02 : 0.05) + G.S * 0.5;
+      const tight = this.tight ? 0.78 : 1; // the ending huddles everyone close to hold paws
       for (const o of this.otters) {
         o.u = G.S * o.size;
         o.homeX = x + o.u * 0.4;
         o.homeY = G.surface - o.u * 0.3;
-        x += o.u * (G.portrait ? 0.9 : 1.12) + G.S * (G.portrait ? 0.02 : 0.14);
+        x += (o.u * (G.portrait ? 0.9 : 1.12) + G.S * (G.portrait ? 0.02 : 0.14)) * tight;
       }
     }
 
@@ -155,10 +179,25 @@
           p.eo = 1;
           p.blush = 1;
         }
+        // story scenes can take over an otter's position and expression
+        const cine = o.cine;
+        if (cine && cine.pose) Object.assign(p, cine.pose);
         o.dx = U.damp(o.dx, tx, 8, dt);
         o.dy = U.damp(o.dy, ty, 8, dt);
-        o.x = o.homeX + o.dx;
-        o.y = o.homeY + o.dy + Math.sin(t * 2 + o.i * 0.9) * G.S * 0.04;
+        const wave = Math.sin(t * 2 + o.i * 0.9) * G.S * 0.04 * (1 + (adv.rough || 0) * 4);
+        if (!o.placed) {
+          o.placed = true;
+          o.x = o.homeX + o.dx;
+          o.by = o.homeY + o.dy;
+        }
+        if (cine) {
+          o.x = U.damp(o.x, cine.x, cine.speed || 3, dt);
+          o.by = U.damp(o.by, cine.y, cine.speed || 3, dt);
+        } else {
+          o.x = U.damp(o.x, o.homeX + o.dx, 7, dt);
+          o.by = U.damp(o.by, o.homeY + o.dy, 12, dt);
+        }
+        o.y = o.by + wave;
         for (const k in p) if (k !== 'bob' && k !== 'rot') q[k] = U.damp(q[k], p[k], 10, dt);
         q.bob = Math.sin(t * 1.8 + o.seed) * 0.04;
         q.rot = U.damp(q.rot, q.lean, 8, dt);
@@ -199,7 +238,7 @@
       if (this.protectT > 0) {
         // sunscreen shine
         const [cx, cy] = this.centre();
-        const w = (this.front().x - this.otters[0].x) / 2 + G.S;
+        const w = Math.max(G.S * 0.8, (this.front().x - this.otters[0].x) / 2 + G.S);
         ctx.save();
         ctx.globalAlpha = 0.35 + 0.1 * Math.sin(t * 6);
         const gr = ctx.createRadialGradient(cx, cy, 0, cx, cy, w * 1.1);
@@ -231,10 +270,10 @@
         const a = this.otters[0], b = this.front();
         const x = a.x - a.u * 0.4, w = b.x - a.x + b.u * 0.8, y = G.surface + G.S * 0.6;
         ctx.fillStyle = 'rgba(20,20,40,0.45)';
-        adv.roundRect(ctx, x, y, w, 9, 4.5);
+        adv.roundRect(ctx, x, y, w, 6, 3);
         ctx.fill();
         ctx.fillStyle = this.ko ? '#ffb347' : this.hp > 0.5 ? '#6ee07a' : this.hp > 0.25 ? '#ffd23f' : '#ff5d6c';
-        adv.roundRect(ctx, x, y, Math.max(4.5, w * U.clamp(this.ko ? 1 - this.koT / OR.BAL.koTime : this.hp, 0, 1)), 9, 4.5);
+        adv.roundRect(ctx, x, y, Math.max(3, w * U.clamp(this.ko ? 1 - this.koT / OR.BAL.koTime : this.hp, 0, 1)), 6, 3);
         ctx.fill();
         if (this.ko) {
           ctx.font = `800 ${Math.round(U.clamp(G.S * 0.28, 12, 18))}px "Baloo 2", Nunito, sans-serif`;
