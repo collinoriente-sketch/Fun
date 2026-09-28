@@ -1,0 +1,635 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Field Notes">
+<meta name="theme-color" content="#0f6e6e">
+<title>IH Field Notes</title>
+<style>
+:root {
+  --bg: #f4f6f7;
+  --card: #ffffff;
+  --text: #16202a;
+  --muted: #5d6b78;
+  --line: #d9e0e5;
+  --accent: #0f6e6e;
+  --accent-soft: #d8efee;
+  --rec: #d23b3b;
+  --flash: #fff1b8;
+  --shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101518;
+    --card: #1a2227;
+    --text: #e7edf1;
+    --muted: #93a3af;
+    --line: #2d3940;
+    --accent: #4cc2bd;
+    --accent-soft: #173a3a;
+    --rec: #ff6161;
+    --flash: #4d4418;
+    --shadow: none;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+header {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; gap: 8px;
+  padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+  background: var(--accent); color: #fff;
+}
+header h1 { font-size: 18px; margin: 0; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+header button { background: rgba(255,255,255,.18); border: 0; color: #fff; border-radius: 8px; padding: 6px 10px; }
+main { max-width: 720px; margin: 0 auto; padding: 16px 16px 180px; }
+.btn {
+  display: block; width: 100%; padding: 14px; border-radius: 12px; border: 0;
+  background: var(--accent); color: #fff; font-weight: 600; font-size: 17px;
+}
+.btn.secondary { background: var(--card); color: var(--accent); border: 1px solid var(--line); }
+.row { display: flex; gap: 8px; margin-top: 10px; }
+.row .btn { flex: 1; font-size: 15px; padding: 12px 8px; }
+.card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  box-shadow: var(--shadow); margin-top: 12px;
+}
+.note-item { display: block; width: 100%; text-align: left; padding: 12px 14px; border: 0; background: none; }
+.note-item + .note-item { border-top: 1px solid var(--line); }
+.note-item b { display: block; }
+.note-item span { color: var(--muted); font-size: 14px; }
+.empty { color: var(--muted); text-align: center; padding: 24px 8px; }
+.privacy { color: var(--muted); font-size: 13px; margin-top: 16px; }
+details.section { padding: 0 14px; }
+details.section > summary {
+  list-style: none; padding: 14px 0; font-weight: 700; display: flex; justify-content: space-between;
+}
+details.section > summary::-webkit-details-marker { display: none; }
+details.section > summary::after { content: "▾"; color: var(--muted); }
+details.section:not([open]) > summary::after { content: "▸"; }
+.count { color: var(--muted); font-weight: 400; font-size: 14px; margin-left: auto; margin-right: 8px; }
+.field { margin-bottom: 12px; }
+.field label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+.field .inp { display: flex; gap: 6px; align-items: flex-start; }
+.field input, .field textarea {
+  flex: 1; min-width: 0; width: 100%;
+  font: inherit; color: var(--text); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 8px; padding: 10px;
+  transition: background-color .6s;
+}
+.field textarea { min-height: 64px; resize: vertical; }
+.field.flash input, .field.flash textarea { background: var(--flash); transition: none; }
+.field.target input, .field.target textarea { outline: 2px solid var(--rec); }
+.mic {
+  flex: none; width: 42px; height: 42px; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--card); font-size: 18px;
+}
+.field.target .mic { background: var(--rec); border-color: var(--rec); }
+.help { padding: 0 14px 12px; font-size: 14px; color: var(--muted); }
+.help summary { padding: 14px 0 2px; font-weight: 600; color: var(--accent); }
+.help table { border-collapse: collapse; width: 100%; margin-top: 8px; }
+.help td { border-top: 1px solid var(--line); padding: 6px 4px; vertical-align: top; }
+.help td:first-child { color: var(--text); white-space: nowrap; padding-right: 10px; }
+.help code { background: var(--accent-soft); color: var(--text); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+.tx { padding: 0 14px 10px; font-size: 14px; }
+.tx p { margin: 0; padding: 8px 0; border-top: 1px solid var(--line); }
+.tx time { color: var(--muted); font-size: 12px; margin-right: 6px; }
+.tx .tags { display: block; color: var(--accent); font-size: 12px; margin-top: 2px; }
+.dock {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+  background: var(--card); border-top: 1px solid var(--line);
+  padding: 8px 16px calc(10px + env(safe-area-inset-bottom));
+}
+.dock-inner { max-width: 720px; margin: 0 auto; }
+.interim {
+  min-height: 22px; font-size: 14px; color: var(--muted); font-style: italic;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 6px;
+}
+.dock-row { display: flex; align-items: center; gap: 12px; }
+.rec-btn {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 14px; border: 0; border-radius: 999px; background: var(--accent); color: #fff;
+  font-size: 17px; font-weight: 700;
+}
+.rec-btn .dot { width: 14px; height: 14px; border-radius: 50%; background: #fff; }
+.rec-btn.on { background: var(--rec); }
+.rec-btn.on .dot { animation: pulse 1.2s infinite; }
+@keyframes pulse { 50% { opacity: .25; } }
+.switch { display: flex; flex-direction: column; align-items: center; font-size: 11px; color: var(--muted); gap: 2px; }
+.switch input { width: 22px; height: 22px; accent-color: var(--accent); margin: 0; }
+.toast {
+  position: fixed; left: 50%; bottom: 120px; transform: translateX(-50%); z-index: 30;
+  max-width: calc(100% - 32px); background: var(--text); color: var(--bg);
+  padding: 10px 14px; border-radius: 10px; font-size: 14px; opacity: 0; pointer-events: none;
+  transition: opacity .25s;
+}
+.toast.show { opacity: .95; }
+.banner { background: var(--flash); color: var(--text); border-radius: 10px; padding: 10px 12px; font-size: 14px; margin-top: 12px; }
+.danger { color: var(--rec); background: none; border: 0; padding: 16px 0; width: 100%; font-size: 15px; }
+#print { display: none; }
+@media print {
+  body { background: #fff; color: #000; }
+  header, main, .dock, .toast { display: none !important; }
+  #print { display: block; font: 12px/1.4 Arial, sans-serif; }
+  #print h1 { font-size: 18px; margin: 0 0 4px; }
+  #print h2 { font-size: 13px; margin: 14px 0 4px; border-bottom: 1px solid #999; }
+  #print table { width: 100%; border-collapse: collapse; }
+  #print td { padding: 3px 4px; vertical-align: top; }
+  #print td:first-child { width: 34%; color: #444; }
+}
+</style>
+</head>
+<body>
+<header>
+  <button id="back" hidden aria-label="Back to all interviews">‹ All</button>
+  <h1 id="title">IH Field Notes</h1>
+  <button id="share" hidden>Share</button>
+</header>
+<main id="app"></main>
+<div class="dock" id="dock" hidden>
+  <div class="dock-inner">
+    <div class="interim" id="interim"></div>
+    <div class="dock-row">
+      <button class="rec-btn" id="rec"><span class="dot"></span><span id="rec-label">Start recording</span></button>
+      <label class="switch"><input type="checkbox" id="autofill" checked>Auto-fill</label>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<div id="print"></div>
+
+<script>
+(() => {
+'use strict';
+
+// ---------- Form definition ----------
+// cues: phrases you say before a value, e.g. "job title welder".
+// A cue starting with "+" is kept as part of the value ("safety glasses" -> "Safety glasses").
+// long: a paragraph field; new voice notes get added on instead of replacing.
+// before: if nothing follows the cue, use the word(s) just before it ("second shift").
+// id: squeeze spoken digits together ("4 5 2" -> "452").
+// title: capitalize every word.
+const SECTIONS = [
+  { name: 'Interview', open: true, fields: [
+    { key: 'date', label: 'Date', type: 'date' },
+    { key: 'time', label: 'Time', type: 'time' },
+    { key: 'interviewer', label: 'Interviewer', title: true },
+    { key: 'site', label: 'Site / facility', title: true, cues: ['site is', 'site', 'facility is', 'facility', 'plant is', 'location is'] },
+    { key: 'area', label: 'Work area / building', cues: ['work area is', 'work area', 'building', 'area is'] },
+  ]},
+  { name: 'Worker', open: true, fields: [
+    { key: 'name', label: 'Worker name', title: true, cues: ['worker name', "worker's name", 'employee name', 'name is', 'name'] },
+    { key: 'empId', label: 'Employee ID', id: true, cues: ['employee id', 'employee i d', 'employee number', 'badge number', 'id number', 'badge'] },
+    { key: 'jobTitle', label: 'Job title', title: true, cues: ['job title is', 'job title', 'position is', 'position', 'works as an', 'works as a', 'works as', 'title is'] },
+    { key: 'department', label: 'Department', title: true, cues: ['department is', 'department', 'crew is'] },
+    { key: 'shift', label: 'Shift / schedule', before: true, cues: ['shift is', 'shift', 'schedule is', 'schedule'] },
+    { key: 'tenure', label: 'Time in role', cues: ['time in role', 'years in role', 'years on the job', 'years of experience', 'experience is', 'been here', 'tenure'] },
+    { key: 'supervisor', label: 'Supervisor', title: true, cues: ['supervisor is', 'supervisor', 'foreman is', 'foreman'] },
+  ]},
+  { name: 'Task & exposure', open: true, fields: [
+    { key: 'task', label: 'Task description', long: true, cues: ['task is', 'tasks are', 'task', 'duties are', 'job duties', 'duties'] },
+    { key: 'duration', label: 'Duration on task', before: true, cues: ['duration is', 'duration', 'time on task', 'hours per shift', 'hours a day', 'hours per day'] },
+    { key: 'frequency', label: 'Frequency', cues: ['frequency is', 'frequency', 'how often'] },
+    { key: 'agents', label: 'Chemicals / agents / hazards', long: true, cues: ['chemicals are', 'chemicals', 'chemical', 'agents are', 'agents', 'exposed to', 'exposure to', 'hazards are', 'hazards', 'hazard', 'products used'] },
+    { key: 'eng', label: 'Engineering controls', long: true, cues: ['engineering controls are', 'engineering controls', 'engineering control', 'controls are', '+local exhaust', '+ventilation', '+fume extractor'] },
+    { key: 'training', label: 'Training', cues: ['training is', 'trained on', 'training'] },
+  ]},
+  { name: 'PPE', open: false, fields: [
+    { key: 'resp', label: 'Respirator', cues: ['respirator type', 'respirator is', 'respirator', 'respiratory protection', '+half face', '+half mask', '+full face', '+papr', '+n95'] },
+    { key: 'fitTest', label: 'Last fit test', cues: ['last fit test', 'fit test date', 'fit tested', 'fit test'] },
+    { key: 'hearing', label: 'Hearing protection', cues: ['hearing protection is', 'hearing protection', '+foam plugs', '+ear plugs', '+earplugs', '+ear muffs', '+earmuffs'] },
+    { key: 'gloves', label: 'Gloves', cues: ['gloves are', 'hand protection', '+nitrile gloves', '+leather gloves', '+gloves'] },
+    { key: 'eyes', label: 'Eye / face protection', cues: ['eye protection', '+safety glasses', '+safety goggles', '+goggles', '+face shield'] },
+    { key: 'otherPpe', label: 'Other PPE', long: true, cues: ['other ppe', 'ppe is', '+coveralls', '+tyvek', '+hard hat', '+steel toe'] },
+  ]},
+  { name: 'Health', open: false, fields: [
+    { key: 'symptoms', label: 'Symptoms / health concerns', long: true, cues: ['symptoms are', 'symptoms', 'symptom', 'health concerns', 'health concern', 'complains of', 'complaints', 'concerns are'] },
+  ]},
+  { name: 'Sampling', open: false, fields: [
+    { key: 'sampleId', label: 'Sample ID', id: true, cues: ['sample id', 'sample i d', 'sample number'] },
+    { key: 'sampleType', label: 'Sample type / method', cues: ['sample type', 'sampling for', 'method is', 'media is'] },
+    { key: 'pumpId', label: 'Pump ID', id: true, cues: ['pump id', 'pump i d', 'pump number'] },
+    { key: 'flow', label: 'Flow rate', cues: ['flow rate is', 'flow rate'] },
+    { key: 'start', label: 'Start time', cues: ['start time', 'started at', 'pump on at', 'pump on'] },
+    { key: 'stop', label: 'Stop time', cues: ['stop time', 'stopped at', 'pump off at', 'pump off'] },
+  ]},
+  { name: 'Notes', open: true, fields: [
+    { key: 'notes', label: 'Observations & notes', long: true, cues: ['note that', 'notes', 'note', 'observation', 'observed', 'comment'] },
+  ]},
+];
+const FIELDS = SECTIONS.flatMap(s => s.fields);
+const FIELD = Object.fromEntries(FIELDS.map(f => [f.key, f]));
+
+const escRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const CUES = [];
+for (const f of FIELDS) for (const c of f.cues || []) {
+  const keep = c[0] === '+';
+  const phrase = keep ? c.slice(1) : c;
+  // One-word cues like "shift" or "task" are "weak": they also show up in normal sentences.
+  CUES.push({ key: f.key, phrase, keep, weak: !phrase.includes(' '),
+    re:new RegExp('\\b' + escRe(phrase).replace(/ /g, '[\\s-]+') + '\\b', 'gi') });
+}
+CUES.sort((a, b) => b.phrase.length - a.phrase.length);
+
+// ---------- Turning speech into fields ----------
+const FILLER = /^(works|work|on|the|a|an|is|does|at|in|for|of|he|she|they|and|usually|typically)$/i;
+const ABOUT = /^(about|around|roughly|approximately|approx|maybe|over|under|nearly)$/i;
+
+function clean(s, f) {
+  s = s.replace(/^[\s:,;.\-–—]+/, '')
+       .replace(/^(?:(?:is|are|was|were|equals|of|a|an)\b[\s:,]*)+/i, '');
+  if (f && !f.long) s = s.split(/[.!?](?:\s|$)/)[0];
+  s = s.replace(/\s+/g, ' ');
+  for (let prev; prev !== s;) {
+    prev = s;
+    s = s.replace(/[\s,;:.!?]+$/, '').replace(/\s*\b(and|or|with|also|plus|then|next|okay|ok)$/i, '');
+  }
+  s = s.trim();
+  if (!s) return '';
+  if (f && f.id) s = s.replace(/(\d)\s+(?=\d)/g, '$1');
+  if (f && f.title) s = s.replace(/\b[a-z]/g, c => c.toUpperCase());
+  else s = s[0].toUpperCase() + s.slice(1);
+  return s;
+}
+
+function parse(text) {
+  const hits = [];
+  for (const c of CUES) {
+    c.re.lastIndex = 0;
+    let m;
+    while ((m = c.re.exec(text))) {
+      const s = m.index, e = s + m[0].length;
+      if (!hits.some(h => s < h.e && e > h.s)) hits.push({ key: c.key, keep: c.keep, weak: c.weak, s, e });
+    }
+  }
+  hits.sort((a, b) => a.s - b.s);
+  // Inside a paragraph answer ("symptoms are headaches at the end of the shift"),
+  // a weak cue only counts if it starts a new sentence or phrase.
+  const kept = [];
+  for (const h of hits) {
+    const prev = kept[kept.length - 1];
+    if (h.weak && prev && FIELD[prev.key].long && !/(^|[.!?;,])\s*$/.test(text.slice(prev.e, h.s))) continue;
+    kept.push(h);
+  }
+  // Work right to left so each value runs up to where the next one starts.
+  let nextStart = text.length;
+  const found = [];
+  for (let i = kept.length - 1; i >= 0; i--) {
+    const h = kept[i], f = FIELD[h.key];
+    const from = h.keep ? h.s : h.e;
+    let claim = h.s;
+    let val = clean(text.slice(from, nextStart), f);
+    if (!clean(text.slice(h.e, nextStart)) && f.before) {
+      // "second shift", "about 4 hours a day": the answer came just before the cue.
+      const prevEnd = i > 0 ? kept[i - 1].e : 0;
+      const seg = text.slice(prevEnd, h.s);
+      const tail = seg.split(/[.!?,;]/).pop();
+      const words = [...tail.matchAll(/[\w'’:-]+/g)];
+      let w = words.length - 1;
+      if (w > 0 && ABOUT.test(words[w - 1][0])) w--;
+      if (w >= 0 && !FILLER.test(words[w][0])) {
+        claim = prevEnd + (seg.length - tail.length) + words[w].index;
+        val = clean(text.slice(claim, nextStart), f);
+      }
+    }
+    const next = found[0];
+    if (next && next.key === h.key && next.claim === nextStart) {
+      // The same field twice in a row ("respirator half face ...") becomes one answer.
+      found[0] = { key: h.key, value: clean(text.slice(from, next.end), f), claim, end: next.end };
+      nextStart = claim;
+      continue;
+    }
+    if (!val) continue; // an empty cue just stays part of the previous answer
+    found.unshift({ key: h.key, value: val, claim, end: nextStart });
+    nextStart = claim;
+  }
+  return found.map(({ key, value }) => ({ key, value }));
+}
+
+// ---------- Storage (stays on this phone) ----------
+const STORE = 'ih-field-notes-v1';
+let db = { notes: [], interviewer: '' };
+try { db = Object.assign(db, JSON.parse(localStorage.getItem(STORE)) || {}); } catch (e) {}
+let saveWarned = false;
+function save() {
+  try { localStorage.setItem(STORE, JSON.stringify(db)); }
+  catch (e) {
+    if (!saveWarned) { saveWarned = true; toast('⚠️ Could not save on this phone. Export your notes before closing.'); }
+  }
+}
+
+// ---------- Helpers ----------
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const pad = n => String(n).padStart(2, '0');
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+const nowTime = () => { const d = new Date(); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+let toastTimer;
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+let current = null;   // the interview being edited
+let targetKey = null; // field chosen with its 🎤 button
+
+// ---------- Views ----------
+function route() {
+  const m = location.hash.match(/^#\/n\/(.+)$/);
+  const note = m && db.notes.find(n => n.id === m[1]);
+  if (note) showNote(note); else showList();
+}
+
+function showList() {
+  stopRec();
+  $('toast').classList.remove('show');
+  current = null;
+  $('title').textContent = 'IH Field Notes';
+  $('back').hidden = true; $('share').hidden = true; $('dock').hidden = true;
+  const notes = [...db.notes].sort((a, b) => b.updated - a.updated);
+  $('app').innerHTML = `
+    <button class="btn" id="new">＋ New interview</button>
+    ${SR ? '' : `<div class="banner">Voice isn't available in this browser. Use Safari on iPhone or Chrome on Android. You can still type, or use your keyboard's 🎤 key.</div>`}
+    <div class="card">
+      ${notes.length ? notes.map(n => `
+        <button class="note-item" data-id="${n.id}">
+          <b>${esc(n.fields.name || 'Unnamed worker')}</b>
+          <span>${esc([n.fields.jobTitle, n.fields.site, n.fields.date].filter(Boolean).join(' · '))}</span>
+        </button>`).join('') : `<div class="empty">No interviews yet. Tap “New interview” to start.</div>`}
+    </div>
+    ${notes.length ? `<div class="row"><button class="btn secondary" id="csv">Export all (CSV)</button></div>` : ''}
+    <p class="privacy">🔒 Notes are saved only on this phone, in this browser. Speech is turned into text by your phone's
+    own speech service (Apple or Google), the same one the keyboard mic uses. Export regularly as a backup, and follow
+    your company's rules for worker information.</p>`;
+  $('new').onclick = () => {
+    const n = { id: Date.now().toString(36), created: Date.now(), updated: Date.now(),
+      fields: { date: today(), time: nowTime(), interviewer: db.interviewer }, transcript: [] };
+    db.notes.push(n); save();
+    location.hash = '#/n/' + n.id;
+  };
+  document.querySelectorAll('.note-item').forEach(b => b.onclick = () => { location.hash = '#/n/' + b.dataset.id; });
+  if ($('csv')) $('csv').onclick = exportCsv;
+}
+
+function showNote(note) {
+  current = note; targetKey = null;
+  $('back').hidden = false; $('share').hidden = false; $('dock').hidden = !SR;
+  setTitle();
+  const cueRows = FIELDS.filter(f => f.cues).map(f =>
+    `<tr><td>${esc(f.label)}</td><td>${f.cues.slice(0, 3).map(c => `<code>${esc(c.replace('+', ''))}</code>`).join(' ')}</td></tr>`).join('');
+  $('app').innerHTML = `
+    <div class="card"><details class="help"><summary>How voice fill works</summary>
+      <p>Tap <b>Start recording</b> and say a field name followed by the answer, like:<br>
+      <i>“Worker name Maria Lopez. Job title welder. Department maintenance. Second shift.”</i></p>
+      <p>The app fills in the matching boxes (they flash yellow). Everything you say is also saved in the
+      <b>Transcript</b> at the bottom. To talk straight into one box, tap its 🎤.
+      Turn <b>Auto-fill</b> off to only keep the transcript, for example while the worker is talking.
+      You can always fix a box by typing.</p>
+      <table>${cueRows}</table>
+    </details></div>
+    ${SECTIONS.map(s => {
+      const filled = s.fields.filter(f => note.fields[f.key]).length;
+      return `<div class="card"><details class="section" ${s.open ? 'open' : ''}>
+        <summary>${esc(s.name)}<span class="count" data-sec="${esc(s.name)}">${filled}/${s.fields.length}</span></summary>
+        ${s.fields.map(f => `
+          <div class="field" id="f-${f.key}">
+            <label for="i-${f.key}">${esc(f.label)}</label>
+            <div class="inp">
+              ${f.long
+                ? `<textarea id="i-${f.key}" data-key="${f.key}">${esc(note.fields[f.key])}</textarea>`
+                : `<input id="i-${f.key}" data-key="${f.key}" type="${f.type || 'text'}" value="${esc(note.fields[f.key])}" autocomplete="off">`}
+              ${SR && !f.type ? `<button class="mic" data-key="${f.key}" aria-label="Dictate into ${esc(f.label)}">🎤</button>` : ''}
+            </div>
+          </div>`).join('')}
+      </details></div>`;
+    }).join('')}
+    <div class="card"><details class="section" open>
+      <summary>Transcript<span class="count" id="tx-count">${note.transcript.length}</span></summary>
+      <div class="tx" id="tx"></div>
+    </details></div>
+    <div class="row">
+      <button class="btn secondary" id="copy">Copy text</button>
+      <button class="btn secondary" id="pdf">Print / PDF</button>
+    </div>
+    <button class="danger" id="del">Delete this interview</button>`;
+  renderTranscript();
+
+  document.querySelectorAll('[data-key]:not(.mic)').forEach(el => el.oninput = () => {
+    current.fields[el.dataset.key] = el.value;
+    if (el.dataset.key === 'interviewer') db.interviewer = el.value;
+    touch();
+  });
+  document.querySelectorAll('.mic').forEach(b => b.onclick = () => {
+    setTarget(targetKey === b.dataset.key ? null : b.dataset.key);
+    if (targetKey && !recording) startRec();
+  });
+  $('copy').onclick = () => copyText(reportText(current));
+  $('pdf').onclick = printNote;
+  $('del').onclick = () => {
+    if (!confirm('Delete this interview? This can’t be undone.')) return;
+    db.notes = db.notes.filter(n => n !== current); save();
+    location.hash = '';
+  };
+  updateRecUi();
+}
+
+function setTitle() { $('title').textContent = current.fields.name || 'New interview'; }
+
+function touch() {
+  current.updated = Date.now();
+  save(); setTitle(); updateCounts();
+}
+
+function updateCounts() {
+  for (const s of SECTIONS) {
+    const el = document.querySelector(`.count[data-sec="${CSS.escape(s.name)}"]`);
+    if (el) el.textContent = `${s.fields.filter(f => current.fields[f.key]).length}/${s.fields.length}`;
+  }
+}
+
+function setTarget(key) {
+  if (targetKey) $('f-' + targetKey)?.classList.remove('target');
+  targetKey = key;
+  if (key) {
+    $('f-' + key).classList.add('target');
+    toast(`🎤 Speak now: next words go into “${FIELD[key].label}”`);
+  }
+}
+
+function fill(key, value) {
+  const f = FIELD[key];
+  const cur = (current.fields[key] || '').trim();
+  current.fields[key] = f.long && cur ? cur.replace(/[\s;.]+$/, '') + '; ' + value : value;
+  const box = $('f-' + key);
+  if (box) {
+    box.querySelector('input,textarea').value = current.fields[key];
+    box.closest('details').open = true;
+    box.classList.add('flash');
+    setTimeout(() => box.classList.remove('flash'), 900);
+  }
+}
+
+function renderTranscript() {
+  const tx = $('tx');
+  if (!tx) return;
+  tx.innerHTML = current.transcript.length ? current.transcript.map(l => `
+    <p><time>${esc(l.t)}</time>${esc(l.text)}${l.to && l.to.length
+      ? `<span class="tags">→ ${l.to.map(k => esc(FIELD[k]?.label || k)).join(', ')}</span>` : ''}</p>`).join('')
+    : `<p class="empty">What you say while recording shows up here.</p>`;
+  $('tx-count').textContent = current.transcript.length;
+}
+
+// One finished chunk of speech comes in here.
+function ingest(text) {
+  text = String(text || '').trim();
+  if (!text || !current) return;
+  let to = [];
+  if (targetKey) {
+    const v = clean(text, FIELD[targetKey]);
+    if (v) { fill(targetKey, v); to = [targetKey]; }
+    setTarget(null);
+  } else if ($('autofill').checked) {
+    for (const { key, value } of parse(text)) { fill(key, value); to.push(key); }
+    if (to.length) toast('✓ ' + to.map(k => FIELD[k].label).join(', '));
+  }
+  current.transcript.push({ t: nowTime(), text, to });
+  touch();
+  renderTranscript();
+}
+
+// ---------- Speech recognition ----------
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const isAndroid = /android/i.test(navigator.userAgent);
+let rec = null, recording = false, interimText = '', wakeLock = null;
+
+function startRec() {
+  if (!SR || recording) return;
+  recording = true;
+  interimText = '';
+  runSession();
+  try { navigator.wakeLock?.request('screen').then(l => { wakeLock = l; }).catch(() => {}); } catch (e) {}
+  updateRecUi();
+}
+
+function runSession() {
+  rec = new SR();
+  rec.lang = navigator.language || 'en-US';
+  rec.interimResults = true;
+  // Chrome on Android repeats results in continuous mode, so it gets short sessions that restart.
+  rec.continuous = !isAndroid;
+  const done = new Set();
+  rec.onresult = e => {
+    let interim = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const r = e.results[i];
+      if (r.isFinal) {
+        if (!done.has(i)) { done.add(i); interimText = ''; ingest(r[0].transcript); }
+      } else interim += r[0].transcript;
+    }
+    interimText = interim;
+    $('interim').textContent = interim;
+  };
+  rec.onerror = e => {
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+      recording = false;
+      toast('Microphone blocked. Allow the mic for this site (on iPhone also turn on Siri & Dictation).');
+      updateRecUi();
+    }
+  };
+  rec.onend = () => {
+    if (interimText) { const t = interimText; interimText = ''; ingest(t); }
+    $('interim').textContent = '';
+    if (recording) setTimeout(() => { if (recording) runSession(); }, 150);
+  };
+  try { rec.start(); } catch (e) {}
+}
+
+function stopRec() {
+  if (!recording) return;
+  recording = false;
+  try { rec && rec.stop(); } catch (e) {}
+  try { wakeLock && wakeLock.release(); } catch (e) {}
+  wakeLock = null;
+  updateRecUi();
+}
+
+function updateRecUi() {
+  $('rec').classList.toggle('on', recording);
+  $('rec-label').textContent = recording ? 'Listening… tap to stop' : 'Start recording';
+  if (!recording) { $('interim').textContent = ''; setTarget(null); }
+}
+
+$('rec').onclick = () => recording ? stopRec() : startRec();
+
+// ---------- Export ----------
+function reportText(n) {
+  const out = [`IH Worker Interview — ${n.fields.name || 'Unnamed worker'}`];
+  for (const s of SECTIONS) {
+    const rows = s.fields.filter(f => n.fields[f.key]);
+    if (!rows.length) continue;
+    out.push('', s.name.toUpperCase());
+    for (const f of rows) out.push(`${f.label}: ${n.fields[f.key]}`);
+  }
+  if (n.transcript.length) {
+    out.push('', 'TRANSCRIPT');
+    for (const l of n.transcript) out.push(`[${l.t}] ${l.text}`);
+  }
+  return out.join('\n');
+}
+
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); toast('Copied. Paste it into an email or report.'); }
+  catch (e) { toast('Could not copy on this browser.'); }
+}
+
+$('share').onclick = async () => {
+  if (!current) return;
+  const text = reportText(current);
+  if (navigator.share) {
+    try { await navigator.share({ title: 'Interview: ' + (current.fields.name || 'worker'), text }); } catch (e) {}
+  } else copyText(text);
+};
+
+function printNote() {
+  const n = current;
+  $('print').innerHTML = `<h1>IH Worker Interview — ${esc(n.fields.name || 'Unnamed worker')}</h1>` +
+    SECTIONS.map(s => `<h2>${esc(s.name)}</h2><table>${s.fields.map(f =>
+      `<tr><td>${esc(f.label)}</td><td>${esc(n.fields[f.key])}</td></tr>`).join('')}</table>`).join('') +
+    (n.transcript.length ? `<h2>Transcript</h2>` + n.transcript.map(l => `<div>[${esc(l.t)}] ${esc(l.text)}</div>`).join('') : '');
+  window.print();
+}
+
+function exportCsv() {
+  const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const rows = [[...FIELDS.map(f => f.label), 'Transcript'].map(q).join(',')];
+  for (const n of db.notes) rows.push([...FIELDS.map(f => n.fields[f.key]),
+    n.transcript.map(l => `[${l.t}] ${l.text}`).join('\n')].map(q).join(','));
+  const blob = new Blob(['﻿' + rows.join('\r\n')], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `ih-interviews-${today()}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+$('back').onclick = () => { location.hash = ''; };
+window.addEventListener('hashchange', route);
+route();
+
+// For testing without a microphone.
+window.IH = { parse, ingest };
+})();
+</script>
+</body>
+</html>
