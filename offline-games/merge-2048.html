@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Merge 2048</title>
+<style>
+  html, body { margin:0; height:100%; background:#1b1626; color:#f4ecff; overflow:hidden;
+    font-family: system-ui, "Segoe UI", Roboto, sans-serif; user-select:none; touch-action:none; }
+  #wrap { height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; }
+  header { display:flex; gap:10px; align-items:center; }
+  h1 { margin:0 16px 0 0; font-size:34px; color:#ffb86b; }
+  .stat { background:#2b2340; border-radius:10px; padding:6px 14px; text-align:center; min-width:74px; }
+  .stat small { display:block; font-size:11px; letter-spacing:.1em; color:#a795c9; }
+  .stat b { font-size:20px; }
+  #board { position:relative; background:#2b2340; border-radius:14px; padding:var(--gap); }
+  .cell, .tile { position:absolute; width:var(--s); height:var(--s); border-radius:10px; }
+  .cell { background:#3a3055; }
+  .tile { display:flex; align-items:center; justify-content:center; font-weight:900;
+    transition: transform 110ms ease-out; }
+  .tile.new { animation: pop 160ms ease-out; }
+  .tile.merged { animation: bump 160ms ease-out; }
+  @keyframes pop { from { scale:.2; } to { scale:1; } }
+  @keyframes bump { 50% { scale:1.15; } }
+  p.help { color:#a795c9; margin:0; font-size:14px; text-align:center; }
+  #msg { position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:#1b1626cc; text-align:center; }
+  #msg.show { display:flex; }
+  #msg h2 { font-size:40px; margin:0 0 10px; color:#ffb86b; }
+  .btn { padding:10px 22px; border-radius:999px; border:0; background:#ffb86b; color:#1b1626; font-weight:800; font-size:16px; cursor:pointer; margin:4px; }
+  a.back { position:fixed; top:10px; left:12px; color:#a795c9; text-decoration:none; font-size:14px; }
+</style>
+</head>
+<body>
+<a class="back" href="index.html">← Games</a>
+<div id="wrap">
+  <header>
+    <h1>2048</h1>
+    <div class="stat"><small>SCORE</small><b id="score">0</b></div>
+    <div class="stat"><small>BEST</small><b id="best">0</b></div>
+  </header>
+  <div id="board"></div>
+  <p class="help">Slide with D-pad / stick / arrows / swipe · B or U = undo · Menu or R = new game</p>
+</div>
+<div id="msg"><div><h2 id="msgTitle"></h2><button class="btn" id="again">New game (A)</button><button class="btn" id="keep">Keep going (B)</button></div></div>
+<script>
+const N = 4;
+const COLORS = { 2:['#eee4da','#3a3055'], 4:['#ede0c8','#3a3055'], 8:['#f2b179','#fff'], 16:['#f59563','#fff'],
+  32:['#f67c5f','#fff'], 64:['#f65e3b','#fff'], 128:['#edcf72','#fff'], 256:['#edcc61','#fff'],
+  512:['#edc850','#fff'], 1024:['#edc53f','#fff'], 2048:['#edc22e','#fff'] };
+const boardEl = document.getElementById('board');
+let S, G;
+function layout() {
+  S = Math.floor(Math.min(innerWidth - 40, innerHeight - 170, 520) / (N + 0.6));
+  G = Math.floor(S * 0.12);
+  boardEl.style.setProperty('--s', S + 'px'); boardEl.style.setProperty('--gap', G + 'px');
+  boardEl.style.width = boardEl.style.height = (N * S + (N + 1) * G) + 'px';
+  boardEl.querySelectorAll('.cell').forEach(c => c.remove());
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+    const d = document.createElement('div'); d.className = 'cell';
+    d.style.left = (G + c * (S + G)) + 'px'; d.style.top = (G + r * (S + G)) + 'px';
+    boardEl.prepend(d);
+  }
+  render();
+}
+
+let busy = false;
+let tiles, score, best = +(localStorage.getItem('merge2048-best') || 0), history, won, keepGoing, idc = 0;
+function empty() { const e = []; for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (!tiles.some(t => t.r === r && t.c === c)) e.push([r, c]); return e; }
+function addTile() { const e = empty(); if (!e.length) return; const [r, c] = e[Math.random() * e.length | 0];
+  tiles.push({ id: ++idc, r, c, v: Math.random() < 0.9 ? 2 : 4, isNew: true }); }
+function newGame() { if (busy) return; tiles = []; score = 0; history = []; won = false; keepGoing = false; addTile(); addTile(); hideMsg(); render(); }
+
+function move(dir) { // dir: 'left','right','up','down'
+  if (busy || document.getElementById('msg').classList.contains('show')) return;
+  const snap = { tiles: tiles.map(t => ({ ...t })), score };
+  const vert = dir === 'up' || dir === 'down', rev = dir === 'right' || dir === 'down';
+  let moved = false;
+  tiles.forEach(t => { t.isNew = false; t.merged = false; });
+  const doomed = [];
+  for (let line = 0; line < N; line++) {
+    const row = tiles.filter(t => (vert ? t.c : t.r) === line)
+      .sort((a, b) => rev ? (vert ? b.r - a.r : b.c - a.c) : (vert ? a.r - b.r : a.c - b.c));
+    let pos = 0, prev = null;
+    for (const t of row) {
+      if (prev && prev.v === t.v && !prev.merged) {
+        prev.v *= 2; prev.merged = true; score += prev.v;
+        set(t, pos - 1); doomed.push(t); moved = true;
+      } else {
+        if (set(t, pos)) moved = true;
+        prev = t; pos++;
+      }
+    }
+  }
+  function set(t, p) { const idx = rev ? N - 1 - p : p; const old = vert ? t.r : t.c;
+    if (vert) t.r = idx; else t.c = idx; return old !== idx; }
+  if (!moved) return;
+  history.push(snap); if (history.length > 20) history.shift();
+  render();                                    // slide (merged tiles slide onto their partner)
+  busy = true;
+  setTimeout(() => {
+    busy = false;
+    tiles = tiles.filter(t => !doomed.includes(t));
+    addTile();
+    if (score > best) { best = score; localStorage.setItem('merge2048-best', best); }
+    render();
+    if (!won && tiles.some(t => t.v >= 2048)) { won = true; showMsg('You made 2048! 🎉', true); }
+    else if (!canMove()) showMsg('No moves left', false);
+  }, 115);
+}
+function canMove() {
+  if (empty().length) return true;
+  const at = (r, c) => tiles.find(t => t.r === r && t.c === c);
+  for (const t of tiles) { const a = at(t.r, t.c + 1), b = at(t.r + 1, t.c);
+    if ((a && a.v === t.v) || (b && b.v === t.v)) return true; }
+  return false;
+}
+function undo() { if (busy) return; const h = history.pop(); if (!h) return; tiles = h.tiles; score = h.score; hideMsg(); render(); }
+
+const els = new Map();
+function render() {
+  const live = new Set();
+  for (const t of tiles) {
+    let d = els.get(t.id);
+    if (!d) { d = document.createElement('div'); d.className = 'tile'; boardEl.appendChild(d); els.set(t.id, d); }
+    live.add(t.id);
+    const [bg, fg] = COLORS[t.v] || ['#7c5cff', '#fff'];
+    d.style.background = bg; d.style.color = fg;
+    d.style.fontSize = (S * (t.v < 100 ? 0.45 : t.v < 1000 ? 0.36 : 0.28)) + 'px';
+    d.textContent = t.v;
+    d.style.transform = `translate(${G + t.c * (S + G)}px, ${G + t.r * (S + G)}px)`;
+    d.classList.toggle('new', !!t.isNew);
+    if (t.merged) { d.classList.remove('merged'); void d.offsetWidth; d.classList.add('merged'); }
+  }
+  for (const [id, d] of els) if (!live.has(id)) { d.remove(); els.delete(id); }
+  document.getElementById('score').textContent = score;
+  document.getElementById('best').textContent = best;
+}
+function showMsg(text, canKeep) { document.getElementById('msgTitle').textContent = text;
+  document.getElementById('keep').style.display = canKeep ? '' : 'none';
+  document.getElementById('msg').classList.add('show'); keepGoing = canKeep; }
+function hideMsg() { document.getElementById('msg').classList.remove('show'); }
+document.getElementById('again').onclick = newGame;
+document.getElementById('keep').onclick = hideMsg;
+
+// ---------- input ----------
+const K = { ArrowLeft:'left', ArrowRight:'right', ArrowUp:'up', ArrowDown:'down', KeyA:'left', KeyD:'right', KeyW:'up', KeyS:'down' };
+addEventListener('keydown', e => {
+  const msgUp = document.getElementById('msg').classList.contains('show');
+  if (K[e.code]) { e.preventDefault(); move(K[e.code]); }
+  else if (e.code === 'KeyU' || e.code === 'Backspace') undo();
+  else if (e.code === 'KeyR') newGame();
+  else if (msgUp && e.code === 'Enter') newGame();
+  else if (msgUp && e.code === 'Escape' && keepGoing) hideMsg();
+});
+let ts = null;
+addEventListener('touchstart', e => { ts = [e.touches[0].clientX, e.touches[0].clientY]; }, { passive: true });
+addEventListener('touchend', e => { if (!ts) return;
+  const dx = e.changedTouches[0].clientX - ts[0], dy = e.changedTouches[0].clientY - ts[1]; ts = null;
+  if (Math.max(Math.abs(dx), Math.abs(dy)) < 30) return;
+  move(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up')); });
+let padPrev = {};
+function pollPad() {
+  const now = {};
+  for (const p of (navigator.getGamepads ? navigator.getGamepads() : [])) {
+    if (!p) continue;
+    const b = i => !!(p.buttons[i] && p.buttons[i].pressed), ax = p.axes;
+    now.left ||= b(14) || ax[0] < -0.6; now.right ||= b(15) || ax[0] > 0.6;
+    now.up ||= b(12) || ax[1] < -0.6; now.down ||= b(13) || ax[1] > 0.6;
+    now.a ||= b(0); now.b ||= b(1); now.start ||= b(9);
+  }
+  const hit = k => now[k] && !padPrev[k];
+  const msgUp = document.getElementById('msg').classList.contains('show');
+  for (const d of ['left', 'right', 'up', 'down']) if (hit(d)) move(d);
+  if (hit('b')) { if (msgUp && keepGoing) hideMsg(); else undo(); }
+  if (hit('a') && msgUp) newGame();
+  if (hit('start')) newGame();
+  padPrev = now;
+  requestAnimationFrame(pollPad);
+}
+requestAnimationFrame(pollPad);
+
+addEventListener('resize', layout);
+newGame(); layout();
+</script>
+</body>
+</html>

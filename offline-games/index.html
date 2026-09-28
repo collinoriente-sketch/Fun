@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Offline Games</title>
+<style>
+  html, body { margin:0; min-height:100%; background:#0e1020; color:#e8ebff;
+    font-family: system-ui, "Segoe UI", Roboto, sans-serif; }
+  main { max-width:960px; margin:0 auto; padding:40px 20px; }
+  h1 { margin:0 0 6px; font-size:40px; }
+  p.sub { color:#8a90c0; margin:0 0 28px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:18px; }
+  a.card { display:block; padding:24px; border-radius:18px; background:#171a33; color:inherit; text-decoration:none;
+    outline:3px solid transparent; transition: transform .12s, outline-color .12s; }
+  a.card:hover, a.card.sel { transform:translateY(-4px); outline-color:var(--c); }
+  .icon { font-size:48px; }
+  a.card h2 { margin:10px 0 6px; color:var(--c); }
+  a.card p { margin:0; color:#8a90c0; line-height:1.45; }
+  .best { margin-top:12px; font-size:13px; color:#c9cdf0; }
+  footer { margin-top:30px; color:#5d6395; font-size:13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Offline Games</h1>
+  <p class="sub">No internet needed. Controller: D-pad/stick to choose, A to play. Keyboard and touch work too.</p>
+  <div class="grid">
+    <a class="card" href="block-drop.html" style="--c:#7cf7c9">
+      <div class="icon">🧱</div><h2>Block Drop</h2>
+      <p>Falling-block puzzle with hold, ghost piece and rising speed.</p>
+      <div class="best" data-key="blockdrop-best"></div>
+    </a>
+    <a class="card" href="star-dodger.html" style="--c:#ffcf5c">
+      <div class="icon">🚀</div><h2>Star Dodger</h2>
+      <p>Arcade shooter: waves of invaders, power-ups, bombs and a boss every 5 waves.</p>
+      <div class="best" data-key="stardodger-best"></div>
+    </a>
+    <a class="card" href="merge-2048.html" style="--c:#ffb86b">
+      <div class="icon">🔢</div><h2>Merge 2048</h2>
+      <p>Slide and merge tiles to reach 2048. Undo is allowed.</p>
+      <div class="best" data-key="merge2048-best"></div>
+    </a>
+  </div>
+  <footer>Tip: bookmark this page, or copy the <code>offline-games</code> folder anywhere and open <code>index.html</code>.</footer>
+</main>
+<script>
+document.querySelectorAll('.best').forEach(d => {
+  let v = null; try { v = localStorage.getItem(d.dataset.key); } catch (e) {}
+  d.textContent = v ? `Best: ${v}` : 'Not played yet';
+});
+const cards = [...document.querySelectorAll('a.card')];
+let sel = 0, prev = {};
+function mark() { cards.forEach((c, i) => c.classList.toggle('sel', i === sel)); }
+function step(d) { sel = (sel + d + cards.length) % cards.length; mark(); }
+addEventListener('keydown', e => {
+  if (e.code === 'ArrowRight' || e.code === 'ArrowDown') { step(1); e.preventDefault(); }
+  if (e.code === 'ArrowLeft' || e.code === 'ArrowUp') { step(-1); e.preventDefault(); }
+  if (e.code === 'Enter' && document.activeElement === document.body) location.href = cards[sel].href;
+});
+(function poll() {
+  const now = {};
+  for (const p of (navigator.getGamepads ? navigator.getGamepads() : [])) {
+    if (!p) continue;
+    const b = i => !!(p.buttons[i] && p.buttons[i].pressed);
+    now.next ||= b(15) || b(13) || p.axes[0] > 0.6 || p.axes[1] > 0.6;
+    now.prev ||= b(14) || b(12) || p.axes[0] < -0.6 || p.axes[1] < -0.6;
+    now.go ||= b(0);
+  }
+  if (now.next && !prev.next) step(1);
+  if (now.prev && !prev.prev) step(-1);
+  if (now.go && !prev.go) location.href = cards[sel].href;
+  prev = now;
+  requestAnimationFrame(poll);
+})();
+mark();
+</script>
+</body>
+</html>
