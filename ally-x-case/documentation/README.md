@@ -177,7 +177,7 @@ every part in its print orientation:
 
 | Part | > 45° overhang | Verdict |
 |---|---|---|
-| shell centre | ~160 mm² (the rounded back edges' first 2–3 mm) | no supports |
+| shell centre | ~160–480 mm² (the rounded back edges' first 2–3 mm, clip-window and pocket bridges) | no supports |
 | grip caps | ~1300 mm², but only **~100 mm² steeper than 60°**. The rest is 45–60° slopes on the grip-bottom arc plus short flat bridges | normally no supports in PETG with good part cooling. If your printer curls on 60° overhangs, use **tree supports from build plate only** |
 | kickstand | ~520 mm², almost all short bridges (window top, TPU-sleeve recess) | no supports |
 | cheeks, clips, strips, pads, tests | small bridges only | no supports |
